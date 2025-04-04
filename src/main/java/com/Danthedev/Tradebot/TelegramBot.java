@@ -3,6 +3,7 @@ package com.Danthedev.Tradebot;
 import com.Danthedev.Tradebot.config.BotConfig;
 import com.Danthedev.Tradebot.model.User;
 import com.Danthedev.Tradebot.repository.UserRepository;
+import com.Danthedev.Tradebot.service.MarketStatusService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
@@ -10,22 +11,26 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 
 @Component
 public class TelegramBot extends TelegramLongPollingBot {
 
     private static final String START_COMMAND = "/start";
+    private static final String STATUS_MARKET = "/status";
     private static final String DEFAULT_MESSAGE = "Something is wrong";
 
     private final BotConfig botConfig;
     private final UserRepository repository;
+    private final MarketStatusService marketStatusService;
 
     @Autowired
-    public TelegramBot(BotConfig botConfig, UserRepository repository) {
+    public TelegramBot(BotConfig botConfig, UserRepository repository,MarketStatusService marketStatusService) {
         super(botConfig.getToken());
         this.botConfig=botConfig;
         this.repository=repository;
+        this.marketStatusService=marketStatusService;
     }
 
     @Override
@@ -35,9 +40,12 @@ public class TelegramBot extends TelegramLongPollingBot {
             String username = update.getMessage().getFrom().getFirstName();
             long chatId = update.getMessage().getChatId();
             String messageText = update.getMessage().getText();
-
             handlingNewUsers(chatId,username);
-            handlingCommands(messageText,chatId,username);
+            try {
+                handlingCommands(messageText,chatId,username);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
 
         }
     }
@@ -51,9 +59,10 @@ public class TelegramBot extends TelegramLongPollingBot {
         }
     }
 
-    private void handlingCommands(String messageText, long chatId, String username) {
+    private void handlingCommands(String messageText, long chatId, String username) throws IOException {
         switch (messageText) {
             case START_COMMAND -> startCommandReceived(chatId,username);
+            case STATUS_MARKET -> statusMarketCommandReceived(chatId);
             default -> sendMessage(chatId,DEFAULT_MESSAGE);
         }
     }
@@ -71,6 +80,11 @@ public class TelegramBot extends TelegramLongPollingBot {
     private void startCommandReceived(Long chatId, String username) {
         String message = "Hi " + username + "! I am TradeBot and I will be your financial assistant!";
         sendMessage(chatId,message);
+    }
+
+    private void statusMarketCommandReceived(long chatId) throws IOException {
+        String result = marketStatusService.getMarketStatus();
+        sendMessage(chatId,result);
     }
 
     private void sendMessage(Long chatId, String textToSend) {
