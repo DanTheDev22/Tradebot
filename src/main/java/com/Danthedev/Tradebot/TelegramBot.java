@@ -11,21 +11,22 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Component
 public class TelegramBot extends TelegramLongPollingBot {
 
-    @Autowired
-    private BotConfig botConfig;
+    private static final String START_COMMAND = "/start";
+    private static final String DEFAULT_MESSAGE = "Something is wrong";
 
-    public TelegramBot(BotConfig botConfig) {
+    private final BotConfig botConfig;
+    private final UserRepository repository;
+
+    @Autowired
+    public TelegramBot(BotConfig botConfig, UserRepository repository) {
         super(botConfig.getToken());
         this.botConfig=botConfig;
+        this.repository=repository;
     }
-
-    @Autowired
-    private UserRepository repository;
 
     @Override
     public void onUpdateReceived(Update update) {
@@ -35,19 +36,25 @@ public class TelegramBot extends TelegramLongPollingBot {
             long chatId = update.getMessage().getChatId();
             String messageText = update.getMessage().getText();
 
-            if ((username != null) && (chatId != 0) && !findIfExists(username)) {
-                User newUser = new User();
-                newUser.setUserName(username);
-                newUser.setRegistered_at(LocalDateTime.now());
-                repository.save(newUser);
-            }
+            handlingNewUsers(chatId,username);
+            handlingCommands(messageText,chatId,username);
 
-            switch (messageText) {
-                case "/start" -> startCommandReceived(chatId,username);
-                default -> sendMessage(chatId,"Something is wrong");
-            }
+        }
+    }
 
+    private void handlingNewUsers(long chatId, String username) {
+        if (chatId != 0 && !findIfExists(username)) {
+            User newUser = new User();
+            newUser.setUserName(username);
+            newUser.setRegistered_at(LocalDateTime.now());
+            repository.save(newUser);
+        }
+    }
 
+    private void handlingCommands(String messageText, long chatId, String username) {
+        switch (messageText) {
+            case START_COMMAND -> startCommandReceived(chatId,username);
+            default -> sendMessage(chatId,DEFAULT_MESSAGE);
         }
     }
 
@@ -73,6 +80,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         try {
             execute(sendMessage);
         } catch (TelegramApiException e) {
+            System.out.println(e.getMessage());
         }
     }
 
