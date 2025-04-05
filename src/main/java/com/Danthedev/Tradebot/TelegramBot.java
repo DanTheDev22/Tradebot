@@ -1,10 +1,12 @@
 package com.Danthedev.Tradebot;
 
 import com.Danthedev.Tradebot.config.BotConfig;
+import com.Danthedev.Tradebot.model.CryptoInfo;
 import com.Danthedev.Tradebot.model.User;
 import com.Danthedev.Tradebot.repository.UserRepository;
 import com.Danthedev.Tradebot.service.CryptoService;
 import com.Danthedev.Tradebot.service.MarketStatusService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
@@ -14,7 +16,10 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 
+@Slf4j
 @Component
 public class TelegramBot extends TelegramLongPollingBot {
 
@@ -27,6 +32,8 @@ public class TelegramBot extends TelegramLongPollingBot {
     private final UserRepository repository;
     private final MarketStatusService marketStatusService;
     private final CryptoService cryptoService;
+
+    private Map<Long,String> userState = new HashMap<>();
 
     @Autowired
     public TelegramBot(BotConfig botConfig, UserRepository repository,MarketStatusService marketStatusService, CryptoService cryptoService) {
@@ -45,11 +52,22 @@ public class TelegramBot extends TelegramLongPollingBot {
             long chatId = update.getMessage().getChatId();
             String messageText = update.getMessage().getText();
             handlingNewUsers(chatId,username);
-            try {
-                handlingCommands(messageText,chatId,username);
-            } catch (IOException | InterruptedException e) {
-                throw new RuntimeException(e);
+
+            if (userState.containsKey(chatId) && userState.get(chatId).equals("WAITING_FOR_SYMBOL")) {
+                try {
+                    processCryptoSymbol(chatId,messageText);
+                } catch (IOException | InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+                userState.remove(chatId);
+            } else {
+                try {
+                    handlingCommands(messageText,chatId,username);
+                } catch (IOException | InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
             }
+
 
         }
     }
@@ -67,7 +85,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         switch (messageText) {
             case START_COMMAND -> startCommandReceived(chatId,username);
             case STATUS_MARKET -> statusMarketCommandReceived(chatId);
-            case GET_CRYPTO -> getCrypto(chatId,messageText);
+            case GET_CRYPTO -> handleGetCryptoCommand(chatId);
             default -> sendMessage(chatId,DEFAULT_MESSAGE);
         }
     }
@@ -88,12 +106,27 @@ public class TelegramBot extends TelegramLongPollingBot {
     }
 
     private void statusMarketCommandReceived(long chatId) throws IOException {
-        String result = marketStatusService.getMarketStatus();
-        sendMessage(chatId,result);
+        try {
+            String result = marketStatusService.getMarketStatus();
+            sendMessage(chatId, result);
+        } catch (Exception e) {
+            sendMessage(chatId,"Error retrieving market status");
+            log.warn("Error retrieving market status");
+        }
     }
-    private void getCrypto(long chatId, String symbol) throws IOException, InterruptedException {
-        String result = cryptoService.retrieveCryptoInfo(symbol);
-        sendMessage(chatId,result);
+
+    private void handleGetCryptoCommand(long chatId) {
+        userState.put(chatId,"WAITING_FOR_SYMBOL");
+        sendMessage(chatId,"Please provide a symbol. Example TON-USDT");
+    }
+
+    private void processCryptoSymbol(long chatId, String symbol) throws IOException, InterruptedException {
+        try {
+            CryptoInfo result = cryptoService.retrieveCryptoInfo(symbol);
+            sendMessage(chatId, result.toString());
+        } catch (Exception e) {
+            sendMessage(chatId,"Error retrieving Crypto Data");
+        }
     }
 
     private void sendMessage(Long chatId, String textToSend) {

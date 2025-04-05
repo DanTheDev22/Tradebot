@@ -1,5 +1,8 @@
 package com.Danthedev.Tradebot.service;
 
+import com.Danthedev.Tradebot.model.CryptoInfo;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -12,14 +15,33 @@ import java.net.http.HttpResponse;
 public class CryptoService {
 
 
-    public String retrieveCryptoInfo (String symbol) throws IOException, InterruptedException {
+    public CryptoInfo retrieveCryptoInfo (String symbol) throws IOException, InterruptedException {
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create("https://api.coingecko.com/api/v3/simple/price?ids=" + symbol + "&vs_currencies=usd&include_market_cap=true&include_24hr_vol=true&include_24hr_change=true&include_last_updated_at=true"))
+                .uri(URI.create("https://www.okx.com/api/v5/market/index-tickers?instId="+symbol))
                 .header("accept", "application/json")
-                .header("x-cg-demo-api-key", "CG-yHMjv8fKV1CUVDxnMDXP7WUV")
                 .method("GET", HttpRequest.BodyPublishers.noBody())
                 .build();
         HttpResponse<String> response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
-        return response.body();
+
+        CryptoInfo cryptoInfo = getCryptoInfo(response);
+
+        return cryptoInfo;
+    }
+
+    private static CryptoInfo getCryptoInfo(HttpResponse<String> response) {
+        JSONObject cryptoJson = new JSONObject(response);
+        JSONArray data = cryptoJson.getJSONArray("data");
+        JSONObject cryptoData = data.getJSONObject(0);
+
+        CryptoInfo cryptoInfo = new CryptoInfo(
+                cryptoData.getString("instId"),
+                cryptoData.getString("idxPx"),
+                cryptoData.getString("high24h"),
+                cryptoData.getString("open24h"),
+                cryptoData.getString("low24h"),
+                cryptoData.getString("sodUtc0"),
+                cryptoData.getString("sodUtc8")
+        );
+        return cryptoInfo;
     }
 }
