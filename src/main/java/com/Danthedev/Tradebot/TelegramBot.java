@@ -7,6 +7,7 @@ import com.Danthedev.Tradebot.repository.UserRepository;
 import com.Danthedev.Tradebot.service.CryptoService;
 import com.Danthedev.Tradebot.service.MarketStatusService;
 import lombok.extern.slf4j.Slf4j;
+import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
@@ -25,15 +26,16 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     private static final String START_COMMAND = "/start";
     private static final String STATUS_MARKET = "/status";
-    private static final String GET_CRYPTO = "/getcrypto";
-    private static final String DEFAULT_MESSAGE = "Something is wrong";
+    private static final String GET_FULL_CRYPTO = "/getfullcrypto";
+    private static final String GET_SIMPLE_CRYPTO = "/getsimplecrypto";
+    private static final String DEFAULT_MESSAGE = "Sorry, I didn't understand that. Try one of the available commands.";
 
     private final BotConfig botConfig;
     private final UserRepository repository;
     private final MarketStatusService marketStatusService;
     private final CryptoService cryptoService;
 
-    private Map<Long,String> userState = new HashMap<>();
+    private final Map<Long,UserState> userState = new HashMap<>();
 
     @Autowired
     public TelegramBot(BotConfig botConfig, UserRepository repository,MarketStatusService marketStatusService, CryptoService cryptoService) {
@@ -51,18 +53,24 @@ public class TelegramBot extends TelegramLongPollingBot {
             String username = update.getMessage().getFrom().getFirstName();
             long chatId = update.getMessage().getChatId();
             String messageText = update.getMessage().getText();
-            handlingNewUsers(chatId,username);
+            handleNewUser(chatId,username);
 
-            if (userState.containsKey(chatId) && userState.get(chatId).equals("WAITING_FOR_SYMBOL")) {
+            if (userState.containsKey(chatId) && userState.get(chatId).equals(UserState.WAITING_FOR_SYMBOL_FULL_RESPONSE)) {
                 try {
-                    processCryptoSymbol(chatId,messageText);
+                    processCryptoSymbol(chatId, messageText,UserState.WAITING_FOR_SYMBOL_FULL_RESPONSE);
                 } catch (IOException | InterruptedException e) {
                     throw new RuntimeException(e);
                 }
                 userState.remove(chatId);
-            } else {
+            } else if (userState.containsKey(chatId) && userState.get(chatId).equals(UserState.WAITING_FOR_SYMBOL_SIMPLE_RESPONSE)) {
                 try {
-                    handlingCommands(messageText,chatId,username);
+                    processCryptoSymbol(chatId,messageText,UserState.WAITING_FOR_SYMBOL_SIMPLE_RESPONSE);
+                } catch (IOException | InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }else {
+                try {
+                    handleCommand(messageText,chatId,username);
                 } catch (IOException | InterruptedException e) {
                     throw new RuntimeException(e);
                 }
@@ -72,7 +80,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         }
     }
 
-    private void handlingNewUsers(long chatId, String username) {
+    private void handleNewUser(long chatId, String username) {
         if (chatId != 0 && !findIfExists(username)) {
             User newUser = new User();
             newUser.setUserName(username);
@@ -81,11 +89,12 @@ public class TelegramBot extends TelegramLongPollingBot {
         }
     }
 
-    private void handlingCommands(String messageText, long chatId, String username) throws IOException, InterruptedException {
+    private void handleCommand(String messageText, long chatId, String username) throws IOException, InterruptedException {
         switch (messageText) {
             case START_COMMAND -> startCommandReceived(chatId,username);
-            case STATUS_MARKET -> statusMarketCommandReceived(chatId);
-            case GET_CRYPTO -> handleGetCryptoCommand(chatId);
+            case STATUS_MARKET -> handleStatusCommand(chatId);
+            case GET_FULL_CRYPTO-> handleGetFullCryptoResponseCommand(chatId);
+            case GET_SIMPLE_CRYPTO -> handleGetSimpleCryptoResponseCommand(chatId);
             default -> sendMessage(chatId,DEFAULT_MESSAGE);
         }
     }
@@ -105,7 +114,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         sendMessage(chatId,message);
     }
 
-    private void statusMarketCommandReceived(long chatId) throws IOException {
+    private void handleStatusCommand(long chatId) {
         try {
             String result = marketStatusService.getMarketStatus();
             sendMessage(chatId, result);
@@ -115,20 +124,29 @@ public class TelegramBot extends TelegramLongPollingBot {
         }
     }
 
-    private void handleGetCryptoCommand(long chatId) {
-        userState.put(chatId,"WAITING_FOR_SYMBOL");
+    private void handleGetFullCryptoResponseCommand(long chatId) {
+        userState.put(chatId,UserState.WAITING_FOR_SYMBOL_FULL_RESPONSE);
+        sendMessage(chatId,"Please provide a symbol. Example TON-USDT");
+    }
+    private void handleGetSimpleCryptoResponseCommand(long chatId) {
+        userState.put(chatId,UserState.WAITING_FOR_SYMBOL_SIMPLE_RESPONSE);
         sendMessage(chatId,"Please provide a symbol. Example TON-USDT");
     }
 
-    private void processCryptoSymbol(long chatId, String symbol) throws IOException, InterruptedException {
-        try {
-            CryptoInfo result = cryptoService.retrieveCryptoInfo(symbol);
-            sendMessage(chatId, result.toString());
-        } catch (Exception e) {
-            sendMessage(chatId,"Error retrieving Crypto Data");
+    private void processCryptoSymbol(long chatId, String symbol, UserState userState) throws IOException, InterruptedException {
+        if (userState.equals(UserState.WAITING_FOR_SYMBOL_FULL_RESPONSE)) {
+            try {
+                CryptoInfo result = cryptoService.retrieveCryptoFullInfo(symbol);
+                sendMessage(chatId, result.toString());
+            } catch (Exception e) {
+                sendMessage(chatId, "Error retrieving Crypto Data");
+            }
+        } else {
+            JSONObject object = cryptoService.retrieveCryptoPrice(symbol);
+            sendMessage(chatId,"Symbol: " + symbol + " \n" +
+                    "Price: " + object.getString("price"));
         }
     }
-
     private void sendMessage(Long chatId, String textToSend) {
         SendMessage sendMessage = new SendMessage();
         sendMessage.setText(textToSend);
@@ -140,4 +158,9 @@ public class TelegramBot extends TelegramLongPollingBot {
         }
     }
 
+    private enum UserState {
+        WAITING_FOR_SYMBOL_FULL_RESPONSE, WAITING_FOR_SYMBOL_SIMPLE_RESPONSE
+    }
 }
+
+
