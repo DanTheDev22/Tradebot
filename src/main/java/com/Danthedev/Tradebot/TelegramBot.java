@@ -37,6 +37,7 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     private final Map<Long,UserState> userState = new HashMap<>();
 
+
     @Autowired
     public TelegramBot(BotConfig botConfig, UserRepository repository,MarketStatusService marketStatusService, CryptoService cryptoService) {
         super(botConfig.getToken());
@@ -48,7 +49,6 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     @Override
     public void onUpdateReceived(Update update) {
-
         if (update.hasMessage() && update.getMessage().hasText()) {
             String username = update.getMessage().getFrom().getFirstName();
             long chatId = update.getMessage().getChatId();
@@ -68,15 +68,13 @@ public class TelegramBot extends TelegramLongPollingBot {
                 } catch (IOException | InterruptedException e) {
                     throw new RuntimeException(e);
                 }
-            }else {
+            } else {
                 try {
                     handleCommand(messageText,chatId,username);
                 } catch (IOException | InterruptedException e) {
                     throw new RuntimeException(e);
                 }
             }
-
-
         }
     }
 
@@ -110,7 +108,11 @@ public class TelegramBot extends TelegramLongPollingBot {
     }
 
     private void startCommandReceived(Long chatId, String username) {
-        String message = "Hi " + username + "! I am TradeBot and I will be your financial assistant!";
+        String message = "Hi " + username + "! I am TradeBot and I will be your financial assistant! \n" +
+                "\n Use the following commands: \n" +
+                "/status - shows the US market status \n" +
+                "/getsimplecrypto - shows the price of a cryptocurrency \n" +
+                "/getfullcrypto - shows  full details about a cryptocurrency";
         sendMessage(chatId,message);
     }
 
@@ -128,25 +130,31 @@ public class TelegramBot extends TelegramLongPollingBot {
         userState.put(chatId,UserState.WAITING_FOR_SYMBOL_FULL_RESPONSE);
         sendMessage(chatId,"Please provide a symbol. Example TON-USDT");
     }
+
     private void handleGetSimpleCryptoResponseCommand(long chatId) {
         userState.put(chatId,UserState.WAITING_FOR_SYMBOL_SIMPLE_RESPONSE);
         sendMessage(chatId,"Please provide a symbol. Example TON-USDT");
     }
 
     private void processCryptoSymbol(long chatId, String symbol, UserState userState) throws IOException, InterruptedException {
-        if (userState.equals(UserState.WAITING_FOR_SYMBOL_FULL_RESPONSE)) {
-            try {
+        try {
+            if (userState.equals(UserState.WAITING_FOR_SYMBOL_FULL_RESPONSE)) {
+                try {
                 CryptoInfo result = cryptoService.retrieveCryptoFullInfo(symbol);
                 sendMessage(chatId, result.toString());
-            } catch (Exception e) {
+                } catch (Exception e) {
                 sendMessage(chatId, "Error retrieving Crypto Data");
+                }
+            } else {
+                JSONObject object = cryptoService.retrieveCryptoPrice(symbol);
+                sendMessage(chatId,"Symbol: " + symbol + " \n" +
+                        "Price: " + object.getString("price"));
             }
-        } else {
-            JSONObject object = cryptoService.retrieveCryptoPrice(symbol);
-            sendMessage(chatId,"Symbol: " + symbol + " \n" +
-                    "Price: " + object.getString("price"));
+        } finally {
+            this.userState.remove(chatId);
         }
     }
+
     private void sendMessage(Long chatId, String textToSend) {
         SendMessage sendMessage = new SendMessage();
         sendMessage.setText(textToSend);
