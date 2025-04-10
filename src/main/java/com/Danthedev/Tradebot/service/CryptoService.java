@@ -1,8 +1,13 @@
 package com.Danthedev.Tradebot.service;
 
+import com.Danthedev.Tradebot.TelegramBot;
+import com.Danthedev.Tradebot.model.CryptoAlert;
 import com.Danthedev.Tradebot.model.CryptoInfo;
+import com.Danthedev.Tradebot.repository.CryptoAlertRepository;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -10,9 +15,17 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 public class CryptoService {
+
+    @Autowired
+    private CryptoAlertRepository repository;
+
+    @Autowired
+    private TelegramBot telegramBot;
 
     public CryptoInfo retrieveCryptoFullInfo (String symbol) throws IOException, InterruptedException {
         HttpRequest request = HttpRequest.newBuilder()
@@ -65,5 +78,29 @@ public class CryptoService {
                 cryptoData.getString("sodUtc0"),
                 cryptoData.getString("sodUtc8")
         );
+    }
+
+    public void createCryptoAlert(Long telegramUserId, String symbol, double priceTarget) {
+        CryptoAlert alert = new CryptoAlert();
+        alert.setTelegramUserId(telegramUserId);
+        alert.setSymbol(symbol);
+        alert.setPriceTarget(priceTarget);
+        alert.setNotified(true);
+        repository.save(alert);
+    }
+
+    @Scheduled(fixedRate = 6000)
+    public void checkAlerts() throws IOException, InterruptedException {
+        List<CryptoAlert> alerts = new ArrayList<>();
+
+        for (CryptoAlert alert : alerts) {
+            JSONObject object = retrieveCryptoPrice(alert.getSymbol());
+            double currentPrice = Double.parseDouble(object.getString("price"));
+
+            if (currentPrice>= alert.getPriceTarget()) {
+                telegramBot.s
+            }
+
+        }
     }
 }
