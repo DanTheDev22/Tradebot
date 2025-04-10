@@ -24,6 +24,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static com.Danthedev.Tradebot.model.ListStock.formattedList;
+
 @Slf4j
 @Component
 public class TelegramBot extends TelegramLongPollingBot {
@@ -61,55 +63,34 @@ public class TelegramBot extends TelegramLongPollingBot {
             String username = update.getMessage().getFrom().getFirstName();
             long chatId = update.getMessage().getChatId();
             String messageText = update.getMessage().getText();
-            handleNewUser(chatId,username);
-
-            UserState currentState = userState.get(chatId);
-
-            if (currentState == null) {
-                // Handle the case where there is no state (e.g., assign a default state or ignore)
+            handleNewUser(chatId, username);
+            if (messageText.startsWith("/")) {
                 try {
-                    handleCommand(messageText, chatId, username);
-                } catch (IOException | InterruptedException e) {
-                    throw new RuntimeException(e);
+                    handleCommand(messageText,chatId,username);
+                } catch (Exception e) {
+                    sendMessage(chatId, "❌ Command failed: " + e.getMessage());
+                    log.warn("Command failed: {}", e.getMessage());
                 }
-                return; // Exit early if no state is found
+                return;
             }
 
-            switch (userState.get(chatId)) {
-                case WAITING_FOR_CRYPTO_SYMBOL_FULL_RESPONSE -> {
-                    try {
-                        processCryptoSymbol(chatId, messageText, UserState.WAITING_FOR_CRYPTO_SYMBOL_FULL_RESPONSE);
-                    } catch (IOException | InterruptedException e) {
-                        throw new RuntimeException(e);
+            UserState currentState = userState.get(chatId);
+            if (currentState != null) {
+                try {
+                    switch (userState.get(chatId)) {
+                        case WAITING_FOR_CRYPTO_SYMBOL_FULL_RESPONSE ->
+                                processCryptoSymbol(chatId, messageText, UserState.WAITING_FOR_CRYPTO_SYMBOL_FULL_RESPONSE);
+                        case WAITING_FOR_CRYPTO_SYMBOL_SIMPLE_RESPONSE ->
+                                processCryptoSymbol(chatId, messageText, UserState.WAITING_FOR_CRYPTO_SYMBOL_SIMPLE_RESPONSE);
+                        case WAITING_FOR_STOCK_SYMBOL ->
+                                processStockSymbol(chatId, messageText, UserState.WAITING_FOR_STOCK_SYMBOL);
+                        case WAITING_FOR_SYMBOL ->
+                                processStockSymbol(chatId, messageText, UserState.WAITING_FOR_SYMBOL);
+                        default -> handleCommand(messageText, chatId, username);
                     }
-                }
-                case WAITING_FOR_CRYPTO_SYMBOL_SIMPLE_RESPONSE -> {
-                    try {
-                        processCryptoSymbol(chatId, messageText, UserState.WAITING_FOR_CRYPTO_SYMBOL_SIMPLE_RESPONSE);
-                    } catch (IOException | InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-                case WAITING_FOR_STOCK_SYMBOL -> {
-                    try {
-                        processStockSymbol(chatId,messageText,UserState.WAITING_FOR_STOCK_SYMBOL);
-                    } catch (IOException | InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-                case WAITING_FOR_SYMBOL -> {
-                    try {
-                        processStockSymbol(chatId,messageText,UserState.WAITING_FOR_SYMBOL);
-                    } catch (IOException | InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-                default -> {
-                    try {
-                        handleCommand(messageText, chatId, username);
-                    } catch (IOException | InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }
+                } catch (Exception e) {
+                    sendMessage(chatId, "⚠️ Error processing your input: " + e.getMessage());
+                    log.error("State input failed", e);
                 }
             }
         }
@@ -201,20 +182,30 @@ public class TelegramBot extends TelegramLongPollingBot {
                 sendMessage(chatId,"Symbol: " + symbol + " \n" +
                         "Price: " + object.getString("price"));
             }
+        } catch (Exception e) {
+            sendMessage(chatId, "⚠️ Could not retrieve data for symbol: `" + symbol + "`\nError: " + e.getMessage());
+            log.warn("Error retrieving Crypto Data");
         } finally {
             this.userState.remove(chatId);
         }
     }
 
     private void processStockSymbol(long chatId, String symbol, UserState userState) throws IOException, InterruptedException {
-        if (userState.equals(UserState.WAITING_FOR_STOCK_SYMBOL)) {
-            StockInfo result = stockService.retrieveStockInfo(symbol);
-            sendMessage(chatId,result.toString());
-        } else {
-            List<ListStock> result = stockService.searchStockBySymbol(symbol);
-            sendMessage(chatId,result.toString());
+        try {
+            if (userState.equals(UserState.WAITING_FOR_STOCK_SYMBOL)) {
+                StockInfo result = stockService.retrieveStockInfo(symbol);
+                sendMessage(chatId, result.toString());
+            } else {
+                List<ListStock> result = stockService.searchStockBySymbol(symbol);
+                String formattedResult = formattedList(result);
+                sendMessage(chatId, formattedResult);
+            }
+        } catch (Exception e) {
+            sendMessage(chatId, "⚠️ Could not retrieve data for symbol: `" + symbol + "`\nError: " + e.getMessage());
+            log.warn("Error retrieving Stock Data");
+        } finally {
+            this.userState.remove(chatId);
         }
-        this.userState.remove(chatId);
     }
 
     private void sendMessage(Long chatId, String textToSend) {
