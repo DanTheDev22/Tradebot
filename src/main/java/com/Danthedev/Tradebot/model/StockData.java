@@ -8,7 +8,7 @@ import java.math.RoundingMode;
 
 @Data
 @AllArgsConstructor
-public class StockInfo {
+public class StockData {
 
     private String symbol;
     private String open;
@@ -23,15 +23,12 @@ public class StockInfo {
 
     @Override
     public String toString() {
-        // Converting string values to BigDecimal
         BigDecimal indexPrice = new BigDecimal(price);
         BigDecimal previousClosePrice = new BigDecimal(previousClose);
 
-        // Calculating price change and change percentage
         BigDecimal changeValue = indexPrice.subtract(previousClosePrice);
         BigDecimal changePercent = changeValue.divide(previousClosePrice, 6, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100));
 
-        // Returning formatted string
         return "Symbol: " + symbol + "\n" +
                 "Price: " + price + "$\n" +
                 String.format("Price Change: %.2f$\n", changeValue) +

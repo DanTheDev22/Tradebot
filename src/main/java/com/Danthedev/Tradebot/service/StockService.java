@@ -1,11 +1,10 @@
 package com.Danthedev.Tradebot.service;
 
-import com.Danthedev.Tradebot.model.ListStock;
-import com.Danthedev.Tradebot.model.StockInfo;
+import com.Danthedev.Tradebot.model.StockData;
+import com.Danthedev.Tradebot.model.StockMatch;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.stereotype.Service;
-
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -19,7 +18,7 @@ public class StockService {
 
     private String apiKey = "H1X0GTYXQ9O9064A";
 
-    public StockInfo retrieveStockInfo(String symbol) throws IOException, InterruptedException {
+    public StockData retrieveStockInfo(String symbol) throws IOException, InterruptedException {
         HttpRequest request = HttpRequest
                 .newBuilder(URI.create("https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=" + symbol.toUpperCase() + "&apikey=" + apiKey))
                 .header("accept","application/json")
@@ -27,14 +26,13 @@ public class StockService {
                 .build();
 
         HttpResponse<String> response = HttpClient.newHttpClient().send(request,HttpResponse.BodyHandlers.ofString());
-
         return getStockInfo(response);
     }
 
-    public StockInfo getStockInfo(HttpResponse<String> response) {
+    public StockData getStockInfo(HttpResponse<String> response) {
         JSONObject stockJson = new JSONObject(response.body());
         JSONObject stockResult = stockJson.getJSONObject("Global Quote");
-        return new StockInfo(
+        return new StockData(
               stockResult.getString("01. symbol"),
               stockResult.getString("02. open"),
               stockResult.getString("03. high"),
@@ -48,7 +46,7 @@ public class StockService {
         );
     }
 
-    public List<ListStock> searchStockBySymbol(String symbol) throws IOException, InterruptedException {
+    public List<StockMatch> searchStockBySymbol(String symbol) throws IOException, InterruptedException {
         HttpRequest request = HttpRequest
                 .newBuilder(URI.create("https://www.alphavantage.co/query?function=SYMBOL_SEARCH&keywords="+ symbol +"&apikey=" + apiKey))
                 .header("accept","application/json")
@@ -56,18 +54,17 @@ public class StockService {
                 .build();
 
         HttpResponse<String> response = HttpClient.newHttpClient().send(request,HttpResponse.BodyHandlers.ofString());
-
         return parseStockSearchResponse(response);
     }
 
-    private List<ListStock> parseStockSearchResponse(HttpResponse<String> response) {
-        List<ListStock> stockList = new ArrayList<>();
+    private List<StockMatch> parseStockSearchResponse(HttpResponse<String> response) {
+        List<StockMatch> stockList = new ArrayList<>();
         JSONObject responseJson = new JSONObject(response.body());
         JSONArray bestMatches = responseJson.getJSONArray("bestMatches");
 
         for (int i = 0; i < bestMatches.length(); i++) {
             JSONObject match = bestMatches.getJSONObject(i);
-            ListStock stock = new ListStock(
+            StockMatch stock = new StockMatch(
                     match.getString("1. symbol"),
                     match.getString("2. name"),
                     match.getString("3. type"),

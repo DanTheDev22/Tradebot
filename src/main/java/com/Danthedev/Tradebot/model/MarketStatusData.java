@@ -4,14 +4,14 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 @Data
-public class MarketStatusResponse {
+public class MarketStatusData {
 
     private String exchange;
     private String holiday;
     @JsonProperty(value = "isOpen")
     private boolean isOpen;
     private String session;
-    private long t;
+    private long t; //unix timestamp ignored (just for request purpose)
     private String timezone;
 
     @Override

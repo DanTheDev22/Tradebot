@@ -1,12 +1,13 @@
 package com.Danthedev.Tradebot.service;
 
-import com.Danthedev.Tradebot.TelegramBot;
 import com.Danthedev.Tradebot.model.CryptoAlert;
-import com.Danthedev.Tradebot.model.CryptoInfo;
+import com.Danthedev.Tradebot.model.CryptoData;
 import com.Danthedev.Tradebot.repository.CryptoAlertRepository;
-import org.json.JSONArray;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -15,8 +16,8 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class CryptoService {
@@ -25,15 +26,22 @@ public class CryptoService {
     private CryptoAlertRepository repository;
 
     @Autowired
-    private TelegramBot telegramBot;
+    private static ObjectMapper objectMapper;
 
-    public CryptoInfo retrieveCryptoFullInfo (String symbol) throws IOException, InterruptedException {
+    @Autowired
+    @Lazy
+    private NotificationService notificationService;
+
+    @Autowired
+    private HttpClient httpClient;
+
+    public CryptoData retrieveCryptoFullInfo (String symbol) throws IOException, InterruptedException {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create("https://www.okx.com/api/v5/market/index-tickers?instId="+symbol.toUpperCase()))
                 .header("accept", "application/json")
                 .method("GET", HttpRequest.BodyPublishers.noBody())
                 .build();
-        HttpResponse<String> response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
         return getCryptoInfo(response);
     }
@@ -46,11 +54,8 @@ public class CryptoService {
                 .method("GET", HttpRequest.BodyPublishers.noBody())
                 .build();
 
-        HttpClient client = HttpClient.newBuilder()
-                .followRedirects(HttpClient.Redirect.ALWAYS)
-                .build();
+        HttpResponse<String> response = httpClient.send(request,HttpResponse.BodyHandlers.ofString());
 
-        HttpResponse<String> response = client.send(request,HttpResponse.BodyHandlers.ofString());
         if (response.statusCode() == 200) {
             String result = response.body();
             return new JSONObject(result);
@@ -64,43 +69,41 @@ public class CryptoService {
         return symbol.replace("-", "");
     }
 
-    private static CryptoInfo getCryptoInfo(HttpResponse<String> response) {
-        JSONObject cryptoJson = new JSONObject(response.body());
-        JSONArray data = cryptoJson.getJSONArray("data");
-        JSONObject cryptoData = data.getJSONObject(0);
-
-        return new CryptoInfo(
-                cryptoData.getString("instId"),
-                cryptoData.getString("idxPx"),
-                cryptoData.getString("high24h"),
-                cryptoData.getString("open24h"),
-                cryptoData.getString("low24h"),
-                cryptoData.getString("sodUtc0"),
-                cryptoData.getString("sodUtc8")
-        );
+    private static CryptoData getCryptoInfo(HttpResponse<String> response) throws JsonProcessingException {
+        return objectMapper.readValue(response.body(), CryptoData.class);
     }
 
-    public void createCryptoAlert(Long telegramUserId, String symbol, double priceTarget) {
+    public void createCryptoAlert(Long telegramUserId, String symbol, double targetPrice) {
         CryptoAlert alert = new CryptoAlert();
         alert.setTelegramUserId(telegramUserId);
         alert.setSymbol(symbol);
-        alert.setPriceTarget(priceTarget);
-        alert.setNotified(true);
+        alert.setTargetPrice(targetPrice);
         repository.save(alert);
     }
 
-    @Scheduled(fixedRate = 6000)
+    @Scheduled(fixedRate = 60000)
     public void checkAlerts() throws IOException, InterruptedException {
-        List<CryptoAlert> alerts = new ArrayList<>();
+        List<CryptoAlert> alerts = repository.findByNotifiedFalse();
 
         for (CryptoAlert alert : alerts) {
             JSONObject object = retrieveCryptoPrice(alert.getSymbol());
             double currentPrice = Double.parseDouble(object.getString("price"));
 
-            if (currentPrice>= alert.getPriceTarget()) {
-                telegramBot.s
+            if (currentPrice>= alert.getTargetPrice()) {
+                notificationService.notifyUser(alert.getTelegramUserId(),alert.getSymbol() + " has reached " +
+                        alert.getTargetPrice() + " ! Actual Price is " + currentPrice );
+                alert.setNotified(true);
+                repository.delete(alert);
             }
-
         }
+    }
+
+    public List<CryptoAlert> showAllMyAlerts(Long telegramUserId) {
+        return repository.findByTelegramUserId(telegramUserId);
+    }
+
+    public void deleteMyAlert(String symbol) {
+        Optional<CryptoAlert> foundAlert = repository.findBySymbol(symbol.toUpperCase());
+        foundAlert.ifPresent(cryptoAlert -> repository.delete(cryptoAlert));
     }
 }

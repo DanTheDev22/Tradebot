@@ -7,7 +7,7 @@ import java.util.List;
 
 @Data
 @AllArgsConstructor
-public class ListStock {
+public class StockMatch {
 
     private String symbol;
     private String name;
@@ -35,11 +35,11 @@ public class ListStock {
         );
     }
 
-    public static String formattedList(List<ListStock> listStockList){
+    public static String formattedList(List<StockMatch> listStockList){
         StringBuilder builder = new StringBuilder();
         int index = 1;
 
-        for(ListStock stock : listStockList) {
+        for(StockMatch stock : listStockList) {
             builder.append("====================================\n");
             builder.append("Match #").append(index++).append("\n");
             builder.append("Symbol      : ").append(stock.getSymbol()).append("\n");

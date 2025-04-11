@@ -8,7 +8,7 @@ import java.math.RoundingMode;
 
 @Data
 @AllArgsConstructor
-public class CryptoInfo {
+public class CryptoData {
 
     private String instId;
     private String idxPx;
