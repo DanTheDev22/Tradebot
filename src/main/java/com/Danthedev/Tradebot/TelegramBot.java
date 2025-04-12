@@ -4,6 +4,7 @@ import com.Danthedev.Tradebot.config.BotConfig;
 import com.Danthedev.Tradebot.model.*;
 import com.Danthedev.Tradebot.repository.UserRepository;
 import com.Danthedev.Tradebot.service.CryptoService;
+import com.Danthedev.Tradebot.service.ForexService;
 import com.Danthedev.Tradebot.service.MarketStatusService;
 import com.Danthedev.Tradebot.service.StockService;
 import lombok.extern.slf4j.Slf4j;
@@ -37,19 +38,22 @@ public class TelegramBot extends TelegramLongPollingBot {
     private final MarketStatusService marketStatusService;
     private final CryptoService cryptoService;
     private final StockService stockService;
+    private final ForexService forexService;
 
     private final Map<Long, UserState> userState = new HashMap<>();
     private final Map<Long, CryptoAlert> alertsList = new HashMap<>();
-
+    private final Map<Long, String> currencySessionMap = new HashMap<>();
 
     @Autowired
-    public TelegramBot(BotConfig botConfig, UserRepository userRepository, MarketStatusService marketStatusService, CryptoService cryptoService, StockService stockService) {
+    public TelegramBot(BotConfig botConfig, UserRepository userRepository, MarketStatusService marketStatusService,
+                       CryptoService cryptoService, StockService stockService, ForexService forexService) {
         super(botConfig.getToken());
         this.botConfig = botConfig;
         this.userRepository = userRepository;
         this.marketStatusService = marketStatusService;
         this.cryptoService = cryptoService;
         this.stockService = stockService;
+        this.forexService=forexService;
     }
 
     @Override
@@ -83,6 +87,10 @@ public class TelegramBot extends TelegramLongPollingBot {
                                 processStockSymbol(chatId, messageText, UserState.WAITING_FOR_STOCK_SYMBOL);
                         case WAITING_FOR_STOCK_SEARCH_SYMBOL ->
                                 processStockSymbol(chatId, messageText, UserState.WAITING_FOR_STOCK_SEARCH_SYMBOL);
+                        case WAITING_FOR_FROM_CURRENCY ->
+                            processFromCurrency(chatId,messageText,UserState.WAITING_FOR_FROM_CURRENCY);
+                        case WAITING_FOR_TO_CURRENCY ->
+                                processToCurrency(chatId,messageText,UserState.WAITING_FOR_TO_CURRENCY);
                         case WAITING_FOR_CREATE_ALERT_SYMBOL -> {
                             processCryptoSymbol(chatId, messageText, UserState.WAITING_FOR_CREATE_ALERT_SYMBOL);
                             CryptoAlert newAlert = new CryptoAlert();
@@ -122,6 +130,7 @@ public class TelegramBot extends TelegramLongPollingBot {
             case FIND_CRYPTO -> handleSearchBySymbolOrByNameCryptoCommand(chatId);
             case GET_STOCK -> handleGetStockResponseCommand(chatId);
             case FIND_STOCK -> handleFindBySymbolCommand(chatId);
+            case EXCHANGE_RATE -> handleExchangeCommand(chatId);
             case CREATE_ALERT -> handleCreateAlertCommand(chatId);
             case SHOW_ALERTS -> handleShowAlertsCommand(chatId);
             case DELETE_ALERT -> handleDeleteAlertCommand(chatId);
@@ -148,6 +157,7 @@ public class TelegramBot extends TelegramLongPollingBot {
                 "/findcrypto - returns the best-matching symbols and market information for cryptocurrency \n" +
                 "/getstock - shows  full details about an stock \n" +
                 "/findstock - returns the best-matching symbols and market information for stock \n" +
+                "/exchange - returns the realtime exchange rate for a pair of digital currency (e.g., Bitcoin) or physical currency (e.g., USD). \n" +
                 "/createalert - creates alert price and gives notification when is reached \n" +
                 "/showalerts - shows user's alerts \n" +
                 "/deletealert - delete user's alert \n";
@@ -202,6 +212,12 @@ public class TelegramBot extends TelegramLongPollingBot {
     private void handleDeleteAlertCommand(long chatId) {
         userState.put(chatId, UserState.WAITING_FOR_DELETE_ALERT_SYMBOL);
         sendMessage(chatId, "Please provide a symbol for cryptocurrency. Example TON-USDT");
+    }
+
+    private void handleExchangeCommand(long chatId) {
+        userState.put(chatId,UserState.WAITING_FOR_FROM_CURRENCY);
+        currencySessionMap.put(chatId,null);
+        sendMessage(chatId,"Please provide the symbol for the currency/Digital-currency you want to exchange from (e.g., USD, EUR, BTC, ETH).");
     }
 
     private void processCryptoSymbol(long chatId, String symbol, UserState userState) {
@@ -305,6 +321,34 @@ public class TelegramBot extends TelegramLongPollingBot {
             }
     }
 
+    private void processFromCurrency(long chatId, String fromCurrency, UserState userState) {
+        try {
+            if (currencySessionMap.get(chatId) != null && userState.equals(UserState.WAITING_FOR_FROM_CURRENCY)) {
+                currencySessionMap.put(chatId, fromCurrency);
+                sendMessage(chatId, "You selected " + fromCurrency + ". Now, please provide the 'to' currency symbol (e.g., EUR).");
+            }
+        } catch (Exception e) {
+            sendMessage(chatId,"Error retrieving data : " + e.getMessage());
+        }
+    }
+
+    private void processToCurrency(long chatId, String toCurrency, UserState userState) {
+        if (userState.equals(UserState.WAITING_FOR_TO_CURRENCY)) {
+            try {
+                String fromCurrency = currencySessionMap.get(chatId);
+
+                if (fromCurrency != null) {
+                    ExchangeRateData exchangeData = forexService.retrieveCurrencyExchangeRate(fromCurrency, toCurrency);
+                    sendMessage(chatId, exchangeData.toString());
+                }
+            } catch (Exception e) {
+                sendMessage(chatId, "");
+            } finally {
+                currencySessionMap.remove(chatId);
+            }
+        }
+    }
+
     private void sendMessage(Long chatId, String textToSend) {
         SendMessage sendMessage = new SendMessage();
         sendMessage.setText(textToSend);
@@ -323,7 +367,7 @@ public class TelegramBot extends TelegramLongPollingBot {
     private enum UserState {
         WAITING_FOR_CRYPTO_SYMBOL_FULL_RESPONSE, WAITING_FOR_CRYPTO_SYMBOL_SIMPLE_RESPONSE, WAITING_FOR_CRYPTO_SEARCH_SYMBOL,
         WAITING_FOR_STOCK_SYMBOL, WAITING_FOR_STOCK_SEARCH_SYMBOL, WAITING_FOR_CREATE_ALERT_SYMBOL, WAITING_FOR_CREATE_ALERT_PRICE,
-        WAITING_FOR_DELETE_ALERT_SYMBOL
+        WAITING_FOR_DELETE_ALERT_SYMBOL,WAITING_FOR_FROM_CURRENCY, WAITING_FOR_TO_CURRENCY
     }
 }
 
