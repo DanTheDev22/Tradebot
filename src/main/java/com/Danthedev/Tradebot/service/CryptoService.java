@@ -5,6 +5,7 @@ import com.Danthedev.Tradebot.model.CryptoData;
 import com.Danthedev.Tradebot.repository.CryptoAlertRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -19,6 +20,7 @@ import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.Optional;
 
+@Slf4j
 @Service
 public class CryptoService {
 
@@ -85,6 +87,11 @@ public class CryptoService {
     public void checkAlerts() throws IOException, InterruptedException {
         List<CryptoAlert> alerts = repository.findByNotifiedFalse();
 
+        if (alerts.isEmpty()) {
+            log.info("No active alerts to check.");
+            return;
+        }
+
         for (CryptoAlert alert : alerts) {
             JSONObject object = retrieveCryptoPrice(alert.getSymbol());
             double currentPrice = Double.parseDouble(object.getString("price"));
@@ -102,8 +109,26 @@ public class CryptoService {
         return repository.findByTelegramUserId(telegramUserId);
     }
 
-    public void deleteMyAlert(String symbol) {
-        Optional<CryptoAlert> foundAlert = repository.findBySymbol(symbol.toUpperCase());
+    public void deleteMyAlert(Long telegramUserId, String symbol) {
+        Optional<CryptoAlert> foundAlert = repository.findByTelegramUserIdAndSymbol(telegramUserId, symbol.toUpperCase());
         foundAlert.ifPresent(cryptoAlert -> repository.delete(cryptoAlert));
+        log.info("Alert for symbol {} deleted for user {}", symbol, telegramUserId);
+    }
+
+    public JSONObject searchBySymbolOrByName(String symbol) throws IOException, InterruptedException {
+        HttpRequest request = HttpRequest
+                .newBuilder(URI.create("https://data-api.coindesk.com/asset/v1/search?limit=1&search_string=" + symbol))
+                .method("GET",HttpRequest.BodyPublishers.noBody())
+                .build();
+
+        HttpResponse<String> response = httpClient.send(request,HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() == 200) {
+            String result = response.body();
+            return new JSONObject(result);
+        } else {
+            System.out.println("Error: Received status code " + response.statusCode());
+            throw new IOException("Failed to retrieve data. Status code: " + response.statusCode());
+        }
     }
 }

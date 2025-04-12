@@ -18,11 +18,12 @@ public class CryptoAlert {
     @Column(name = "alert_id")
     private Long id;
 
-    @Column(name = "telegram_User_id")
+    @Column(name = "telegram_user_id")
     private Long telegramUserId;
 
     private String symbol;
 
+    @Column(name = "target_price")
     private Double targetPrice;
 
     private boolean notified = false;
@@ -30,9 +31,11 @@ public class CryptoAlert {
     @Override
     public String toString() {
         return String.format(
-                "📈 Symbol: %s\n" +
-                        "🎯 Target Price: %.2f\n" +
-                        "🔔 Notified: %s\n",
+                """
+                        📈 Symbol: %s
+                        🎯 Target Price: %.2f
+                        🔔 Notified: %s
+                        """,
                 symbol,
                 targetPrice,
                 notified ? "✅ Yes" : "❌ No"

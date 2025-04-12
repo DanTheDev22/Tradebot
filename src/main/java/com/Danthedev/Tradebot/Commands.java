@@ -6,6 +6,7 @@ public class Commands {
     static final String STATUS_MARKET = "/status";
     static final String GET_FULL_CRYPTO = "/getfullcrypto";
     static final String GET_SIMPLE_CRYPTO = "/getsimplecrypto";
+    static final String FIND_CRYPTO = "/findcrypto";
     static final String GET_STOCK = "/getstock";
     static final String FIND_STOCK ="/findstock";
     static final String CREATE_ALERT = "/createalert";
