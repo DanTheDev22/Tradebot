@@ -19,14 +19,13 @@ public class ExchangeRateData {
 
    @Override
    public String toString() {
-      return "ExchangeRateData {" +
-              "\nFrom Currency: " + fromCurrencyName + " (" + fromCurrencyCode + ")" +
-              "\nTo Currency: " + toCurrencyName + " (" + toCurrencyCode + ")" +
-              "\nExchange Rate: " + exchangeRate +
-              "\nLast Refreshed: " + lastRefreshed +
-              "\nTime Zone: " + timeZone +
-              "\nBid Price: " + bidPrice +
-              "\nAsk Price: " + askPrice +
-              "\n}";
+      return "\n" +
+              "From Currency   : " + fromCurrencyName + " (" + fromCurrencyCode + ")\n" +
+              "To Currency     : " + toCurrencyName + " (" + toCurrencyCode + ")\n" +
+              "Exchange Rate   : " + exchangeRate + "\n" +
+              "Last Refreshed  : " + lastRefreshed + "\n" +
+              "Time Zone       : " + timeZone + "\n" +
+              "Bid Price       : " + bidPrice + "\n" +
+              "Ask Price       : " + askPrice + "\n";
    }
 }

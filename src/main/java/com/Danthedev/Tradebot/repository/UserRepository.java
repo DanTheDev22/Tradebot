@@ -2,8 +2,24 @@ package com.Danthedev.Tradebot.repository;
 
 import com.Danthedev.Tradebot.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+
+
+@Repository
 public interface UserRepository extends JpaRepository<User,Integer> {
 
-    User findByUserId(long UserId);
+    @Modifying
+    @Transactional
+    @Query(value = "INSERT INTO users (user_id,userName,registered_at)" +
+            "VALUES (:user_id,:userName,:registered_at)" +
+            "ON CONFLICT (user_id) DO NOTHING", nativeQuery = true)
+    void insertIfNotExists(@Param("user_id") Long userId,
+                           @Param("userName") String userName,
+                           @Param("registered_at")LocalDateTime registered_at);
 }

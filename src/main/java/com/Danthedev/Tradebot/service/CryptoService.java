@@ -2,6 +2,7 @@ package com.Danthedev.Tradebot.service;
 
 import com.Danthedev.Tradebot.model.CryptoAlert;
 import com.Danthedev.Tradebot.model.CryptoData;
+import com.Danthedev.Tradebot.model.CryptoWrapper;
 import com.Danthedev.Tradebot.repository.CryptoAlertRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -28,7 +29,7 @@ public class CryptoService {
     private CryptoAlertRepository repository;
 
     @Autowired
-    private static ObjectMapper objectMapper;
+    private ObjectMapper objectMapper;
 
     @Autowired
     @Lazy
@@ -71,8 +72,14 @@ public class CryptoService {
         return symbol.replace("-", "");
     }
 
-    private static CryptoData getCryptoInfo(HttpResponse<String> response) throws JsonProcessingException {
-        return objectMapper.readValue(response.body(), CryptoData.class);
+    private CryptoData getCryptoInfo(HttpResponse<String> response) throws JsonProcessingException {
+        CryptoWrapper wrapper = objectMapper.readValue(response.body(), CryptoWrapper.class);
+
+        if (wrapper != null && !wrapper.getData().isEmpty()) {
+            return wrapper.getData().get(0);
+        } else {
+            return  new CryptoData("N/A","0","0","0","0","0","0");
+        }
     }
 
     public void createCryptoAlert(Long telegramUserId, String symbol, double targetPrice) {

@@ -2,7 +2,8 @@ package com.Danthedev.Tradebot.service;
 
 import com.Danthedev.Tradebot.model.ExchangeRateData;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -17,8 +18,6 @@ public class ForexService {
 
     private String apiKey = "H1X0GTYXQ9O9064A";
 
-    @Autowired
-    private static ObjectMapper objectMapper;
 
     @Autowired
     private HttpClient httpClient;
@@ -27,7 +26,7 @@ public class ForexService {
     public ExchangeRateData retrieveCurrencyExchangeRate (String fromCurrency, String toCurrency) throws IOException, InterruptedException {
         HttpRequest request = HttpRequest
                 .newBuilder(URI.create("https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency="
-                        + fromCurrency.toUpperCase() + " &to_currency=" + toCurrency.toUpperCase() + " &apikey=" + apiKey))
+                        + fromCurrency.toUpperCase() + "&to_currency=" + toCurrency.toUpperCase() + "&apikey=" + apiKey))
                 .method("GET",HttpRequest.BodyPublishers.noBody())
                 .build();
 
@@ -36,7 +35,20 @@ public class ForexService {
         return getExchangeRateData(response);
     }
 
-    private static ExchangeRateData getExchangeRateData(HttpResponse<String> response) throws JsonProcessingException {
-        return objectMapper.readValue(response.body(), ExchangeRateData.class);
+    private ExchangeRateData getExchangeRateData(HttpResponse<String> response) throws JsonProcessingException {
+        JSONObject object = new JSONObject(response.body());
+        JSONObject exchangeData = object.getJSONObject("Realtime Currency Exchange Rate");
+
+        return new ExchangeRateData(
+                exchangeData.getString("1. From_Currency Code"),
+                exchangeData.getString("2. From_Currency Name"),
+                exchangeData.getString("3. To_Currency Code"),
+                exchangeData.getString("4. To_Currency Name"),
+                exchangeData.getString("5. Exchange Rate"),
+                exchangeData.getString("6. Last Refreshed"),
+                exchangeData.getString("7. Time Zone"),
+                exchangeData.getString("8. Bid Price"),
+                exchangeData.getString("9. Ask Price")
+        );
     }
 }

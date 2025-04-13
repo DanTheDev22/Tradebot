@@ -5,6 +5,7 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Optional;
 
 @Data
 @AllArgsConstructor
@@ -22,10 +23,17 @@ public class CryptoData {
 
     @Override
     public String toString() {
-        BigDecimal indexPrice = new BigDecimal(idxPx);
-        BigDecimal openPrice = new BigDecimal(open24h);
+        BigDecimal indexPrice = Optional.ofNullable(idxPx)
+                .map(BigDecimal::new)
+                .orElse(BigDecimal.ZERO);
+
+        BigDecimal openPrice = Optional.ofNullable(open24h)
+                .map(BigDecimal::new)
+                .orElse(BigDecimal.ZERO);
+
         BigDecimal change = indexPrice.subtract(openPrice);
-        BigDecimal changePercent = change.divide(openPrice,6, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100));
+        BigDecimal changePercent = openPrice.compareTo(BigDecimal.ZERO) != 0 ?
+                change.divide(openPrice,6, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100)) : BigDecimal.ZERO;
 
 
         return "Symbol: " + instId + "\n" +

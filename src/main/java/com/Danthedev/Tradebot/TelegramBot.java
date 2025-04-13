@@ -87,8 +87,10 @@ public class TelegramBot extends TelegramLongPollingBot {
                                 processStockSymbol(chatId, messageText, UserState.WAITING_FOR_STOCK_SYMBOL);
                         case WAITING_FOR_STOCK_SEARCH_SYMBOL ->
                                 processStockSymbol(chatId, messageText, UserState.WAITING_FOR_STOCK_SEARCH_SYMBOL);
-                        case WAITING_FOR_FROM_CURRENCY ->
-                            processFromCurrency(chatId,messageText,UserState.WAITING_FOR_FROM_CURRENCY);
+                        case WAITING_FOR_FROM_CURRENCY -> {
+                            processFromCurrency(chatId, messageText, UserState.WAITING_FOR_FROM_CURRENCY);
+                            userState.put(chatId,UserState.WAITING_FOR_TO_CURRENCY);
+                        }
                         case WAITING_FOR_TO_CURRENCY ->
                                 processToCurrency(chatId,messageText,UserState.WAITING_FOR_TO_CURRENCY);
                         case WAITING_FOR_CREATE_ALERT_SYMBOL -> {
@@ -113,12 +115,8 @@ public class TelegramBot extends TelegramLongPollingBot {
     }
 
     private void handleNewUser(long chatId, String username) {
-        if (chatId != 0 && !findIfExists(chatId)) {
-            User newUser = new User();
-            newUser.setUserName(username);
-            newUser.setRegistered_at(LocalDateTime.now());
-            userRepository.save(newUser);
-        }
+        if (chatId == 0) return;
+        userRepository.insertIfNotExists(chatId,username,LocalDateTime.now());
     }
 
     private void handleCommand(String messageText, long chatId, String username) {
@@ -141,11 +139,6 @@ public class TelegramBot extends TelegramLongPollingBot {
     @Override
     public String getBotUsername() {
         return botConfig.getBotName();
-    }
-
-    private boolean findIfExists(long chatId) {
-        return userRepository.findByUserId(chatId) != null;
-
     }
 
     private void startCommandReceived(Long chatId, String username) {
@@ -323,7 +316,7 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     private void processFromCurrency(long chatId, String fromCurrency, UserState userState) {
         try {
-            if (currencySessionMap.get(chatId) != null && userState.equals(UserState.WAITING_FOR_FROM_CURRENCY)) {
+            if (currencySessionMap.containsKey(chatId) && userState.equals(UserState.WAITING_FOR_FROM_CURRENCY)) {
                 currencySessionMap.put(chatId, fromCurrency);
                 sendMessage(chatId, "You selected " + fromCurrency + ". Now, please provide the 'to' currency symbol (e.g., EUR).");
             }
@@ -342,9 +335,10 @@ public class TelegramBot extends TelegramLongPollingBot {
                     sendMessage(chatId, exchangeData.toString());
                 }
             } catch (Exception e) {
-                sendMessage(chatId, "");
+                sendMessage(chatId, "Not working properly : " + e.getMessage());
             } finally {
                 currencySessionMap.remove(chatId);
+                this.userState.remove(chatId);
             }
         }
     }
