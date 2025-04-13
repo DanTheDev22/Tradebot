@@ -77,33 +77,28 @@ public class TelegramBot extends TelegramLongPollingBot {
             if (currentState != null) {
                 try {
                     switch (userState.get(chatId)) {
-                        case WAITING_FOR_CRYPTO_SYMBOL_FULL_RESPONSE ->
-                                processCryptoSymbol(chatId, messageText, UserState.WAITING_FOR_CRYPTO_SYMBOL_FULL_RESPONSE);
-                        case WAITING_FOR_CRYPTO_SYMBOL_SIMPLE_RESPONSE ->
-                                processCryptoSymbol(chatId, messageText, UserState.WAITING_FOR_CRYPTO_SYMBOL_SIMPLE_RESPONSE);
-                        case WAITING_FOR_CRYPTO_SEARCH_SYMBOL ->
-                                processCryptoSymbol(chatId,messageText,UserState.WAITING_FOR_CRYPTO_SEARCH_SYMBOL);
-                        case WAITING_FOR_STOCK_SYMBOL ->
-                                processStockSymbol(chatId, messageText, UserState.WAITING_FOR_STOCK_SYMBOL);
-                        case WAITING_FOR_STOCK_SEARCH_SYMBOL ->
-                                processStockSymbol(chatId, messageText, UserState.WAITING_FOR_STOCK_SEARCH_SYMBOL);
+                        case WAITING_FOR_CRYPTO_SYMBOL_FULL_RESPONSE, WAITING_FOR_CRYPTO_SYMBOL_SIMPLE_RESPONSE,
+                             WAITING_FOR_CRYPTO_SEARCH_SYMBOL ->
+                                processCryptoSymbol(chatId, messageText);
+                        case WAITING_FOR_STOCK_SYMBOL, WAITING_FOR_STOCK_SEARCH_SYMBOL ->
+                                processStockSymbol(chatId, messageText);
                         case WAITING_FOR_FROM_CURRENCY -> {
-                            processFromCurrency(chatId, messageText, UserState.WAITING_FOR_FROM_CURRENCY);
+                            processFromCurrency(chatId, messageText);
                             userState.put(chatId,UserState.WAITING_FOR_TO_CURRENCY);
                         }
                         case WAITING_FOR_TO_CURRENCY ->
-                                processToCurrency(chatId,messageText,UserState.WAITING_FOR_TO_CURRENCY);
+                                processToCurrency(chatId,messageText);
                         case WAITING_FOR_CREATE_ALERT_SYMBOL -> {
-                            processCryptoSymbol(chatId, messageText, UserState.WAITING_FOR_CREATE_ALERT_SYMBOL);
+                            processCryptoSymbol(chatId, messageText);
                             CryptoAlert newAlert = new CryptoAlert();
                             newAlert.setSymbol(messageText.toUpperCase());
                             alertsList.put(chatId, newAlert);
                             userState.put(chatId, UserState.WAITING_FOR_CREATE_ALERT_PRICE);
                         }
                         case WAITING_FOR_CREATE_ALERT_PRICE ->
-                                processTargetPrice(chatId, messageText, UserState.WAITING_FOR_CREATE_ALERT_PRICE);
+                                processTargetPrice(chatId, messageText);
                         case WAITING_FOR_DELETE_ALERT_SYMBOL ->
-                                processDeleteAlert(chatId,messageText,UserState.WAITING_FOR_DELETE_ALERT_SYMBOL);
+                                processDeleteAlert(chatId,messageText);
                         default -> handleCommand(messageText, chatId, username);
                     }
                 } catch (Exception e) {
@@ -208,21 +203,26 @@ public class TelegramBot extends TelegramLongPollingBot {
     }
 
     private void handleExchangeCommand(long chatId) {
-        userState.put(chatId,UserState.WAITING_FOR_FROM_CURRENCY);
-        currencySessionMap.put(chatId,null);
-        sendMessage(chatId,"Please provide the symbol for the currency/Digital-currency you want to exchange from (e.g., USD, EUR, BTC, ETH).");
+        userState.put(chatId, UserState.WAITING_FOR_FROM_CURRENCY);
+        currencySessionMap.put(chatId, null);
+
+        String message = "Please provide the symbol for the currency/digital currency "
+                + "you want to exchange from (e.g., USD, EUR, BTC, ETH).\n"
+                + "Supported digital currencies are: BTC, ETH, XRP, DOGE, SOL.";
+
+        sendMessage(chatId, message);
     }
 
-    private void processCryptoSymbol(long chatId, String symbol, UserState userState) {
+    private void processCryptoSymbol(long chatId, String symbol) {
         try {
-            if (userState.equals(UserState.WAITING_FOR_CRYPTO_SYMBOL_FULL_RESPONSE)) {
+            if (this.userState.get(chatId).equals(UserState.WAITING_FOR_CRYPTO_SYMBOL_FULL_RESPONSE)) {
                 CryptoData result = cryptoService.retrieveCryptoFullInfo(symbol);
                 sendMessage(chatId, result.toString());
-            } else if (userState.equals(UserState.WAITING_FOR_CRYPTO_SYMBOL_SIMPLE_RESPONSE)) {
+            } else if (this.userState.get(chatId).equals(UserState.WAITING_FOR_CRYPTO_SYMBOL_SIMPLE_RESPONSE)) {
                 JSONObject object = cryptoService.retrieveCryptoPrice(symbol);
                 sendMessage(chatId, "Symbol: " + symbol + " \n" +
                         "Price: " + object.getString("price"));
-            } else if (userState.equals(UserState.WAITING_FOR_CREATE_ALERT_SYMBOL)) {
+            } else if (this.userState.get(chatId).equals(UserState.WAITING_FOR_CREATE_ALERT_SYMBOL)) {
                 JSONObject object = cryptoService.retrieveCryptoPrice(symbol);
                 String currentPrice = object.getString("price");
                 sendMessage(chatId, "Symbol: " + symbol + " \n" +
@@ -264,9 +264,9 @@ public class TelegramBot extends TelegramLongPollingBot {
     }
 
 
-    private void processStockSymbol(long chatId, String symbol, UserState userState) {
+    private void processStockSymbol(long chatId, String symbol) {
         try {
-            if (userState.equals(UserState.WAITING_FOR_STOCK_SYMBOL)) {
+            if (this.userState.get(chatId).equals(UserState.WAITING_FOR_STOCK_SYMBOL)) {
                 StockData result = stockService.retrieveStockInfo(symbol);
                 sendMessage(chatId, result.toString());
             } else {
@@ -282,9 +282,9 @@ public class TelegramBot extends TelegramLongPollingBot {
         }
     }
 
-    private void processTargetPrice(long chatId, String targetPrice, UserState userState) {
+    private void processTargetPrice(long chatId, String targetPrice) {
         try {
-            if (userState.equals(UserState.WAITING_FOR_CREATE_ALERT_PRICE)) {
+            if (this.userState.get(chatId).equals(UserState.WAITING_FOR_CREATE_ALERT_PRICE)) {
                 CryptoAlert alert = alertsList.get(chatId);
                 double price = Double.parseDouble(targetPrice);
                 alert.setTargetPrice(price);
@@ -300,9 +300,9 @@ public class TelegramBot extends TelegramLongPollingBot {
         alertsList.remove(chatId);
     }
 
-    private void processDeleteAlert(long chatId, String symbol, UserState userState) {
+    private void processDeleteAlert(long chatId, String symbol) {
         try {
-            if (userState.equals(UserState.WAITING_FOR_DELETE_ALERT_SYMBOL)) {
+            if (this.userState.get(chatId).equals(UserState.WAITING_FOR_DELETE_ALERT_SYMBOL)) {
                 cryptoService.deleteMyAlert(chatId, symbol);
                 sendMessage(chatId, "🗑️ Alert for " + symbol.toUpperCase() + " deleted (if it existed).");
             }
@@ -314,9 +314,9 @@ public class TelegramBot extends TelegramLongPollingBot {
             }
     }
 
-    private void processFromCurrency(long chatId, String fromCurrency, UserState userState) {
+    private void processFromCurrency(long chatId, String fromCurrency) {
         try {
-            if (currencySessionMap.containsKey(chatId) && userState.equals(UserState.WAITING_FOR_FROM_CURRENCY)) {
+            if (currencySessionMap.containsKey(chatId) && this.userState.get(chatId).equals(UserState.WAITING_FOR_FROM_CURRENCY)) {
                 currencySessionMap.put(chatId, fromCurrency);
                 sendMessage(chatId, "You selected " + fromCurrency + ". Now, please provide the 'to' currency symbol (e.g., EUR).");
             }
@@ -325,8 +325,8 @@ public class TelegramBot extends TelegramLongPollingBot {
         }
     }
 
-    private void processToCurrency(long chatId, String toCurrency, UserState userState) {
-        if (userState.equals(UserState.WAITING_FOR_TO_CURRENCY)) {
+    private void processToCurrency(long chatId, String toCurrency) {
+        if (this.userState.get(chatId).equals(UserState.WAITING_FOR_TO_CURRENCY)) {
             try {
                 String fromCurrency = currencySessionMap.get(chatId);
 
