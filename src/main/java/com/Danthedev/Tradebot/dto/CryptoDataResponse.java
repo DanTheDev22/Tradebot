@@ -1,10 +1,10 @@
-package com.Danthedev.Tradebot.model;
+package com.Danthedev.Tradebot.dto;
 
 import lombok.Data;
 
 import java.util.List;
 
 @Data
-public class CryptoWrapper {
+public class CryptoDataResponse {
     private List<CryptoData> data;
 }

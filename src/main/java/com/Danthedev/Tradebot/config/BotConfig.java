@@ -2,11 +2,13 @@ package com.Danthedev.Tradebot.config;
 
 import lombok.Data;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Component;
 
 import java.net.http.HttpClient;
 
-@Component
+
+@Configuration
 @Data
 public class BotConfig {
 

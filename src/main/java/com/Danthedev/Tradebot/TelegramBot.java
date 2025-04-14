@@ -1,6 +1,10 @@
 package com.Danthedev.Tradebot;
 
 import com.Danthedev.Tradebot.config.BotConfig;
+import com.Danthedev.Tradebot.dto.CryptoData;
+import com.Danthedev.Tradebot.dto.ExchangeRateData;
+import com.Danthedev.Tradebot.dto.StockData;
+import com.Danthedev.Tradebot.dto.StockMatch;
 import com.Danthedev.Tradebot.model.*;
 import com.Danthedev.Tradebot.repository.UserRepository;
 import com.Danthedev.Tradebot.service.CryptoService;
@@ -26,9 +30,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.Danthedev.Tradebot.Commands.*;
-import static com.Danthedev.Tradebot.model.CryptoAlert.formattedListCrypto;
-import static com.Danthedev.Tradebot.model.StockMatch.formattedList;
+import static com.Danthedev.Tradebot.TradebotCommands.*;
+import static com.Danthedev.Tradebot.TradebotCommands.AlertCommands.*;
+import static com.Danthedev.Tradebot.TradebotCommands.CryptoCommands.*;
+import static com.Danthedev.Tradebot.TradebotCommands.MarketCommands.*;
+import static com.Danthedev.Tradebot.TradebotCommands.StockCommands.*;
+import static com.Danthedev.Tradebot.dto.StockMatch.formatStockList;
+import static com.Danthedev.Tradebot.model.CryptoAlert.formatCryptoAlertList;
 
 
 @Slf4j
@@ -200,7 +208,7 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     private void handleShowAlertsCommand(long chatId) {
         List<CryptoAlert> foundAlerts = cryptoService.showAllMyAlerts(chatId);
-        sendMessage(chatId, formattedListCrypto(foundAlerts));
+        sendMessage(chatId, formatCryptoAlertList(foundAlerts));
     }
 
     private void handleDeleteAlertCommand(long chatId) {
@@ -286,7 +294,7 @@ public class TelegramBot extends TelegramLongPollingBot {
                 sendMessage(chatId, result.toString());
             } else {
                 List<StockMatch> result = stockService.searchStockBySymbol(symbol);
-                String formattedResult = formattedList(result);
+                String formattedResult = formatStockList(result);
                 sendMessage(chatId, formattedResult);
             }
         } catch (Exception e) {

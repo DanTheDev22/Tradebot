@@ -1,6 +1,6 @@
-package com.Danthedev.Tradebot.model;
+package com.Danthedev.Tradebot.dto;
 
-import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -8,7 +8,7 @@ import java.math.RoundingMode;
 import java.util.Optional;
 
 @Data
-@AllArgsConstructor
+@Builder
 public class CryptoData {
 
     private String instId;
@@ -19,17 +19,16 @@ public class CryptoData {
     private String sodUtc0;
     private String sodUtc8;
 
-
+    private BigDecimal format(String value) {
+       return Optional.ofNullable(value)
+                .map(BigDecimal::new)
+                .orElse(BigDecimal.ZERO);
+    }
 
     @Override
     public String toString() {
-        BigDecimal indexPrice = Optional.ofNullable(idxPx)
-                .map(BigDecimal::new)
-                .orElse(BigDecimal.ZERO);
-
-        BigDecimal openPrice = Optional.ofNullable(open24h)
-                .map(BigDecimal::new)
-                .orElse(BigDecimal.ZERO);
+        BigDecimal indexPrice = format(idxPx);
+        BigDecimal openPrice = format(open24h);
 
         BigDecimal change = indexPrice.subtract(openPrice);
         BigDecimal changePercent = openPrice.compareTo(BigDecimal.ZERO) != 0 ?
@@ -46,5 +45,4 @@ public class CryptoData {
                 "Start of Day (UTC 0): " + sodUtc0 + "$\n" +
                 "Start of Day (UTC 8): " + sodUtc8 + "$";
     }
-
 }

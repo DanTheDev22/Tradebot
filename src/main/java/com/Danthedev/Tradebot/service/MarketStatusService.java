@@ -1,6 +1,6 @@
 package com.Danthedev.Tradebot.service;
 
-import com.Danthedev.Tradebot.model.MarketStatusData;
+import com.Danthedev.Tradebot.dto.MarketStatusData;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 import java.io.BufferedReader;

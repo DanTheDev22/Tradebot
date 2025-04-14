@@ -1,6 +1,7 @@
 package com.Danthedev.Tradebot.service;
 
-import com.Danthedev.Tradebot.model.ExchangeRateData;
+import com.Danthedev.Tradebot.dto.ExchangeRateData;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -14,9 +15,7 @@ import java.net.http.HttpResponse;
 @Service
 public class ForexService {
 
-    private static final String pathToSupportedPhysicalCurrency = "src/main/resources/physical_currency_list.txt";
-    private static final String pathToSupportedDigitalCurrency = "src/main/resources/digital_currency_list.txt";
-    private final String apiKey = "H1X0GTYXQ9O9064A";
+    private String apiKey = "H1X0GTYXQ9O9064A";
 
 
     @Autowired
@@ -35,7 +34,7 @@ public class ForexService {
         return getExchangeRateData(response);
     }
 
-    private ExchangeRateData getExchangeRateData(HttpResponse<String> response) {
+    private ExchangeRateData getExchangeRateData(HttpResponse<String> response) throws JsonProcessingException {
         JSONObject object = new JSONObject(response.body());
         JSONObject exchangeData = object.getJSONObject("Realtime Currency Exchange Rate");
 

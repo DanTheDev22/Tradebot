@@ -1,8 +1,8 @@
 package com.Danthedev.Tradebot.service;
 
+import com.Danthedev.Tradebot.dto.CryptoDataResponse;
 import com.Danthedev.Tradebot.model.CryptoAlert;
-import com.Danthedev.Tradebot.model.CryptoData;
-import com.Danthedev.Tradebot.model.CryptoWrapper;
+import com.Danthedev.Tradebot.dto.CryptoData;
 import com.Danthedev.Tradebot.repository.CryptoAlertRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import com.Danthedev.Tradebot.dto.CryptoData;
 
 import java.io.IOException;
 import java.net.URI;
@@ -73,12 +74,12 @@ public class CryptoService {
     }
 
     private CryptoData getCryptoInfo(HttpResponse<String> response) throws JsonProcessingException {
-        CryptoWrapper wrapper = objectMapper.readValue(response.body(), CryptoWrapper.class);
+        CryptoDataResponse wrapper = objectMapper.readValue(response.body(), CryptoDataResponse.class);
 
         if (wrapper != null && !wrapper.getData().isEmpty()) {
             return wrapper.getData().get(0);
         } else {
-            return  new CryptoData("N/A","0","0","0","0","0","0");
+            return null;
         }
     }
 

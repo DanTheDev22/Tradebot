@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Data
 @Entity
@@ -42,19 +43,16 @@ public class CryptoAlert {
         );
     }
 
-    public static String formattedListCrypto(List<CryptoAlert> cryptoAlertList){
+    public static String formatCryptoAlertList(List<CryptoAlert> cryptoAlertList) {
         if (cryptoAlertList.isEmpty()) {
             return "🔕 You have no active alerts.";
         }
 
-        StringBuilder sb = new StringBuilder("📋 Your Alerts:\n\n");
-        int index = 1;
-
-        for(CryptoAlert alert : cryptoAlertList) {
-            sb.append("Alert #").append(index++).append("\n");
-            sb.append(alert.toString()).append("\n");
-            sb.append("--------------------------\n");
-        }
-        return sb.toString();
+        return cryptoAlertList.stream()
+                .map(alert -> String.format(
+                        "Alert #%d\n%s\n--------------------------",
+                        cryptoAlertList.indexOf(alert) + 1,
+                        alert.toString()))
+                .collect(Collectors.joining("\n\n"));
     }
 }

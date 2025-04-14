@@ -1,7 +1,7 @@
 package com.Danthedev.Tradebot.service;
 
-import com.Danthedev.Tradebot.model.StockData;
-import com.Danthedev.Tradebot.model.StockMatch;
+import com.Danthedev.Tradebot.dto.StockData;
+import com.Danthedev.Tradebot.dto.StockMatch;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.stereotype.Service;
