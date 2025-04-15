@@ -12,7 +12,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import com.Danthedev.Tradebot.dto.CryptoData;
 
 import java.io.IOException;
 import java.net.URI;
@@ -39,33 +38,37 @@ public class CryptoService {
     @Autowired
     private HttpClient httpClient;
 
-    public CryptoData retrieveCryptoFullInfo (String symbol) throws IOException, InterruptedException {
+    public CryptoData retrieveCryptoFullInfo(String symbol) throws IOException, InterruptedException {
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create("https://www.okx.com/api/v5/market/index-tickers?instId="+symbol.toUpperCase()))
+                .uri(URI.create("https://www.okx.com/api/v5/market/index-tickers?instId=" + symbol.toUpperCase()))
                 .header("accept", "application/json")
                 .method("GET", HttpRequest.BodyPublishers.noBody())
                 .build();
+
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
+        if (response.statusCode() != 200) {
+            throw new IOException("OKX API responded with status " + response.statusCode());
+        }
         return getCryptoInfo(response);
     }
 
-    public JSONObject retrieveCryptoPrice (String symbol) throws IOException, InterruptedException {
+
+    public JSONObject retrieveCryptoPrice(String symbol) throws IOException, InterruptedException {
         symbol = formatSymbol(symbol);
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create("https://binance.com/api/v3/ticker/price?symbol="+symbol.toUpperCase()))
+                .uri(URI.create("https://binance.com/api/v3/ticker/price?symbol=" + symbol.toUpperCase()))
                 .header("accept", "application/json")
                 .method("GET", HttpRequest.BodyPublishers.noBody())
                 .build();
 
-        HttpResponse<String> response = httpClient.send(request,HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
         if (response.statusCode() == 200) {
-            String result = response.body();
-            return new JSONObject(result);
+            return new JSONObject(response.body());
         } else {
-            System.out.println("Error: Received status code " + response.statusCode());
-            throw new IOException("Failed to retrieve price. Status code: " + response.statusCode());
+            log.warn("Failed to retrieve price for '{}'. Status code: {}", symbol, response.statusCode());
+            throw new IOException("❌ Could not retrieve price. Please try again later.");
         }
     }
 
@@ -117,26 +120,39 @@ public class CryptoService {
         return repository.findByTelegramUserId(telegramUserId);
     }
 
-    public void deleteMyAlert(Long telegramUserId, String symbol) {
+    public boolean deleteMyAlert(Long telegramUserId, String symbol) {
         Optional<CryptoAlert> foundAlert = repository.findByTelegramUserIdAndSymbol(telegramUserId, symbol.toUpperCase());
-        foundAlert.ifPresent(cryptoAlert -> repository.delete(cryptoAlert));
-        log.info("Alert for symbol {} deleted for user {}", symbol, telegramUserId);
+
+        if (foundAlert.isPresent()) {
+            repository.delete(foundAlert.get());
+            log.info("✅ Alert for symbol '{}' deleted for user {}", symbol.toUpperCase(), telegramUserId);
+            return true;
+        } else {
+            log.warn("⚠️ No alert found for symbol '{}' for user {}", symbol.toUpperCase(), telegramUserId);
+            return false;
+        }
     }
+
 
     public JSONObject searchBySymbolOrByName(String symbol) throws IOException, InterruptedException {
         HttpRequest request = HttpRequest
                 .newBuilder(URI.create("https://data-api.coindesk.com/asset/v1/search?limit=1&search_string=" + symbol))
-                .method("GET",HttpRequest.BodyPublishers.noBody())
+                .method("GET", HttpRequest.BodyPublishers.noBody())
                 .build();
 
-        HttpResponse<String> response = httpClient.send(request,HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
         if (response.statusCode() == 200) {
-            String result = response.body();
-            return new JSONObject(result);
+            JSONObject result = new JSONObject(response.body());
+
+            if (result.isEmpty() || !result.has("data") || result.getJSONArray("data").isEmpty()) {
+                throw new IOException("🔍 No results found for: '" + symbol + "'. Try a different symbol or name.");
+            }
+
+            return result;
         } else {
-            System.out.println("Error: Received status code " + response.statusCode());
-            throw new IOException("Failed to retrieve data. Status code: " + response.statusCode());
+            log.warn("Search failed for '{}'. Status code: {}", symbol, response.statusCode());
+            throw new IOException("❌ Could not search for symbol. Please try again later.");
         }
     }
 }

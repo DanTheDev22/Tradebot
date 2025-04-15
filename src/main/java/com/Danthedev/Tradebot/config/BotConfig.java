@@ -1,9 +1,9 @@
 package com.Danthedev.Tradebot.config;
 
 import lombok.Data;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.stereotype.Component;
 
 import java.net.http.HttpClient;
 
@@ -12,9 +12,11 @@ import java.net.http.HttpClient;
 @Data
 public class BotConfig {
 
-    private String botName = "my_trading_assist_bot";
+    @Value("${tradebot.name}")
+    private String botName;
 
-    private String token = "8166380318:AAFhPMnW8Bjen-ygsquwtE-1KHlnDojJehg";
+    @Value("${tradebot.token}")
+    private String token;
 
     @Bean
     public HttpClient httpClient() {

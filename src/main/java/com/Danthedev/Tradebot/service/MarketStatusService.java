@@ -2,6 +2,7 @@ package com.Danthedev.Tradebot.service;
 
 import com.Danthedev.Tradebot.dto.MarketStatusData;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -13,7 +14,9 @@ import java.net.URL;
 @Service
 public class MarketStatusService {
 
-    private static String api_key = "cvnp211r01qq3c7ghnp0cvnp211r01qq3c7ghnpg";
+    @Value("${FinnHub.API.token}")
+    private String api_key;
+
     private static final String API_URL = "https://finnhub.io/api/v1/stock/market-status?exchange=US&token=";
 
     public String getMarketStatus() throws IOException {

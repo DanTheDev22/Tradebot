@@ -1,9 +1,9 @@
 package com.Danthedev.Tradebot.service;
 
 import com.Danthedev.Tradebot.dto.ExchangeRateData;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -15,8 +15,8 @@ import java.net.http.HttpResponse;
 @Service
 public class ForexService {
 
-    private String apiKey = "H1X0GTYXQ9O9064A";
-
+    @Value("${AlphaVantage.API.token}")
+    private String apiKey;
 
     @Autowired
     private HttpClient httpClient;
@@ -34,7 +34,7 @@ public class ForexService {
         return getExchangeRateData(response);
     }
 
-    private ExchangeRateData getExchangeRateData(HttpResponse<String> response) throws JsonProcessingException {
+    private ExchangeRateData getExchangeRateData(HttpResponse<String> response) {
         JSONObject object = new JSONObject(response.body());
         JSONObject exchangeData = object.getJSONObject("Realtime Currency Exchange Rate");
 

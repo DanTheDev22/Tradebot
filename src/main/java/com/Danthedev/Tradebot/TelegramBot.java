@@ -13,7 +13,6 @@ import com.Danthedev.Tradebot.service.MarketStatusService;
 import com.Danthedev.Tradebot.service.StockService;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -24,6 +23,7 @@ import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
+import java.io.File;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -72,20 +72,28 @@ public class TelegramBot extends TelegramLongPollingBot {
             String username = update.getMessage().getFrom().getFirstName();
             long chatId = update.getMessage().getChatId();
             String messageText = update.getMessage().getText();
+
             handleNewUser(chatId, username);
+
             if (messageText.startsWith("/")) {
                 try {
                     handleCommand(messageText, chatId, username);
                 } catch (Exception e) {
-                    sendMessage(chatId, "❌ Command failed: " + e.getMessage());
-                    log.warn("Command failed: {}", e.getMessage());
+                    sendMessage(chatId, "❌ Something went wrong while executing that command. Please try again.",true);
+                    log.warn("Command '{}' from user '{}' failed: {}", messageText, username, e.getMessage());
                 }
                 return;
             }
 
             UserState currentState = userState.get(chatId);
-            if (currentState != null) {
-                try {
+            if (currentState == null) {
+                sendMessage(chatId, "🤖 I'm not sure what you're trying to do. Use /start to see available commands.",true);
+                log.info("User '{}' sent unrecognized message: '{}'", username, messageText);
+                return;
+            }
+
+
+            try {
                     switch (userState.get(chatId)) {
                         case WAITING_FOR_CRYPTO_SYMBOL_FULL_RESPONSE, WAITING_FOR_CRYPTO_SYMBOL_SIMPLE_RESPONSE,
                              WAITING_FOR_CRYPTO_SEARCH_SYMBOL ->
@@ -109,15 +117,17 @@ public class TelegramBot extends TelegramLongPollingBot {
                                 processTargetPrice(chatId, messageText);
                         case WAITING_FOR_DELETE_ALERT_SYMBOL ->
                                 processDeleteAlert(chatId,messageText);
-                        default -> handleCommand(messageText, chatId, username);
+                        default -> {
+                            handleCommand(messageText, chatId, username);
+                        log.warn("Unhandled state: {}", currentState);
+                        }
                     }
                 } catch (Exception e) {
-                    sendMessage(chatId, "⚠️ Error processing your input: " + e.getMessage());
-                    log.error("State input failed", e);
-                }
+                sendMessage(chatId, "⚠️ Oops! Something went wrong while processing your input.",true);
+                log.error("Error processing input in state '{}': {}", currentState, e.getMessage(), e);
+            }
             }
         }
-    }
 
     private void handleNewUser(long chatId, String username) {
         if (chatId == 0) return;
@@ -139,7 +149,7 @@ public class TelegramBot extends TelegramLongPollingBot {
             case CREATE_ALERT -> handleCreateAlertCommand(chatId);
             case SHOW_ALERTS -> handleShowAlertsCommand(chatId);
             case DELETE_ALERT -> handleDeleteAlertCommand(chatId);
-            default -> sendMessage(chatId, DEFAULT_MESSAGE);
+            default -> sendMessage(chatId, DEFAULT_MESSAGE,false);
         }
     }
 
@@ -163,57 +173,57 @@ public class TelegramBot extends TelegramLongPollingBot {
                 "/createalert - creates alert price and gives notification when is reached \n" +
                 "/showalerts - shows user's alerts \n" +
                 "/deletealert - delete user's alert \n";
-        sendMessage(chatId, message);
+        sendMessage(chatId, message,false);
     }
 
     private void handleStatusCommand(long chatId) {
         try {
             String result = marketStatusService.getMarketStatus();
-            sendMessage(chatId, result);
+            sendMessage(chatId, result,false);
         } catch (Exception e) {
-            sendMessage(chatId, "Error retrieving market status");
-            log.warn("Error retrieving market status");
+            sendMessage(chatId, "❌ Unable to retrieve the market status right now. Please try again later.",true);
+            log.warn("❗ Error retrieving market status for chatId {}: {}", chatId, e.getMessage(), e);
         }
     }
 
     private void handleGetFullCryptoResponseCommand(long chatId) {
         userState.put(chatId, UserState.WAITING_FOR_CRYPTO_SYMBOL_FULL_RESPONSE);
-        sendMessage(chatId, "Please provide a symbol. Example TON-USDT");
+        sendMessage(chatId, "Please provide a symbol. Example TON-USDT",false);
     }
 
     private void handleGetSimpleCryptoResponseCommand(long chatId) {
         userState.put(chatId, UserState.WAITING_FOR_CRYPTO_SYMBOL_SIMPLE_RESPONSE);
-        sendMessage(chatId, "Please provide a symbol. Example TON-USDT");
+        sendMessage(chatId, "Please provide a symbol. Example TON-USDT",false);
     }
 
     private void handleSearchBySymbolOrByNameCryptoCommand(long chatId) {
         userState.put(chatId,UserState.WAITING_FOR_CRYPTO_SEARCH_SYMBOL);
-        sendMessage(chatId, "Please provide a symbol or a name for crypto");
+        sendMessage(chatId, "Please provide a symbol or a name for crypto",false);
     }
 
     private void handleGetStockResponseCommand(long chatId) {
         userState.put(chatId, UserState.WAITING_FOR_STOCK_SYMBOL);
-        sendMessage(chatId, "Please provide a symbol. Example TSLA");
+        sendMessage(chatId, "Please provide a symbol. Example TSLA",false);
     }
 
     private void handleFindBySymbolCommand(long chatId) {
         userState.put(chatId, UserState.WAITING_FOR_STOCK_SEARCH_SYMBOL);
-        sendMessage(chatId, "Please provide a symbol or a name for stock");
+        sendMessage(chatId, "Please provide a symbol or a name for stock",false);
     }
 
     private void handleCreateAlertCommand(long chatId) {
         userState.put(chatId, UserState.WAITING_FOR_CREATE_ALERT_SYMBOL);
-        sendMessage(chatId, "Please provide a symbol for cryptocurrency. Example TON-USDT");
+        sendMessage(chatId, "Please provide a symbol for cryptocurrency. Example TON-USDT",false);
     }
 
     private void handleShowAlertsCommand(long chatId) {
         List<CryptoAlert> foundAlerts = cryptoService.showAllMyAlerts(chatId);
-        sendMessage(chatId, formatCryptoAlertList(foundAlerts));
+        sendMessage(chatId, formatCryptoAlertList(foundAlerts),false);
     }
 
     private void handleDeleteAlertCommand(long chatId) {
         userState.put(chatId, UserState.WAITING_FOR_DELETE_ALERT_SYMBOL);
-        sendMessage(chatId, "Please provide a symbol for cryptocurrency. Example TON-USDT");
+        sendMessage(chatId, "Please provide a symbol for cryptocurrency. Example TON-USDT",false);
     }
 
     private void handleExchangeCommand(long chatId) {
@@ -227,35 +237,39 @@ public class TelegramBot extends TelegramLongPollingBot {
                 Check supported Physical Currencies - /suppcurrency\s
                 """;
 
-        sendMessage(chatId, message);
+        sendMessage(chatId, message,false);
     }
 
     private void handleGetSupportedDigitalCurrency(long chatId) {
+        InputFile file = new InputFile(new File("src/main/resources/digital_currency_list.txt"));
+        sendDocument(chatId,file);
     }
 
     private void handleGetSupportedPhysicalCurrency(long chatId) {
+        InputFile file = new InputFile(new File("src/main/resources/physical_currency_list.txt"));
+        sendDocument(chatId,file);
     }
 
     private void processCryptoSymbol(long chatId, String symbol) {
         try {
             if (this.userState.get(chatId).equals(UserState.WAITING_FOR_CRYPTO_SYMBOL_FULL_RESPONSE)) {
                 CryptoData result = cryptoService.retrieveCryptoFullInfo(symbol);
-                sendMessage(chatId, result.toString());
+                sendMessage(chatId, result.toString(),false);
             } else if (this.userState.get(chatId).equals(UserState.WAITING_FOR_CRYPTO_SYMBOL_SIMPLE_RESPONSE)) {
                 JSONObject object = cryptoService.retrieveCryptoPrice(symbol);
                 sendMessage(chatId, "Symbol: " + symbol + " \n" +
-                        "Price: " + object.getString("price"));
+                        "Price: " + object.getString("price"),false);
             } else if (this.userState.get(chatId).equals(UserState.WAITING_FOR_CREATE_ALERT_SYMBOL)) {
                 JSONObject object = cryptoService.retrieveCryptoPrice(symbol);
                 String currentPrice = object.getString("price");
                 sendMessage(chatId, "Symbol: " + symbol + " \n" +
                         "Current Price: " + currentPrice + "\n" +
-                        "Please provide the target price");
+                        "Please provide the target price",false);
             } else {
                 JSONObject object = cryptoService.searchBySymbolOrByName(symbol);
                 JSONObject data = object.getJSONObject("Data");
                 if (data == null || !data.has("LIST") || data.getJSONArray("LIST").isEmpty()) {
-                    sendMessage(chatId, "⚠️ No matches found for the symbol `" + symbol + "`.");
+                    sendMessage(chatId, "⚠️ No matches found for the symbol `" + symbol + "`.",true);
                     return;
                 }
 
@@ -270,17 +284,13 @@ public class TelegramBot extends TelegramLongPollingBot {
                         "Symbol: " + correctSymbol + "\n" +
                         "Name: " + correctName + "\n" +
                         "Type: " + type + "\n" +
-                        "Smart Contract Capabilities: " + (smartContractCapabilities ? "Yes" : "No"));
+                        "Smart Contract Capabilities: " + (smartContractCapabilities ? "Yes" : "No"),false);
             }
         } catch (IOException e) {
-            sendMessage(chatId, "⚠️ Error retrieving data for symbol: `" + symbol + "`\nNetwork error: " + e.getMessage());
-            log.warn("Network error while retrieving crypto data", e);
-        } catch (JSONException e) {
-            sendMessage(chatId, "⚠️ Could not parse the response for symbol: `" + symbol + "`\nError: " + e.getMessage());
-            log.warn("Error parsing the JSON response", e);
+            log.warn("400 Bad Request - Malformed symbol '{}'", symbol);
+            sendMessage(chatId, "⚠️ Invalid symbol format. Please double-check and try again. Format 'TON-USDT'", true);
         } catch (Exception e) {
-            sendMessage(chatId, "⚠️ Could not retrieve data for symbol: `" + symbol + "`\nError: " + e.getMessage());
-            log.warn("Unexpected error while retrieving crypto data", e);
+            sendMessage(chatId, "❌ Something went wrong. Please try again later.", true);
         } finally {
             this.userState.remove(chatId);
         }
@@ -291,14 +301,14 @@ public class TelegramBot extends TelegramLongPollingBot {
         try {
             if (this.userState.get(chatId).equals(UserState.WAITING_FOR_STOCK_SYMBOL)) {
                 StockData result = stockService.retrieveStockInfo(symbol);
-                sendMessage(chatId, result.toString());
+                sendMessage(chatId, result.toString(),false);
             } else {
                 List<StockMatch> result = stockService.searchStockBySymbol(symbol);
                 String formattedResult = formatStockList(result);
-                sendMessage(chatId, formattedResult);
+                sendMessage(chatId, formattedResult,false);
             }
         } catch (Exception e) {
-            sendMessage(chatId, "⚠️ Could not retrieve data for symbol: `" + symbol + "`\nError: " + e.getMessage());
+            sendMessage(chatId, "⚠️ Could not retrieve data for symbol: `" + symbol + "`\nError: " + e.getMessage(),true);
             log.warn("Error retrieving Stock Data");
         } finally {
             this.userState.remove(chatId);
@@ -307,58 +317,90 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     private void processTargetPrice(long chatId, String targetPrice) {
         try {
-            if (this.userState.get(chatId).equals(UserState.WAITING_FOR_CREATE_ALERT_PRICE)) {
-                CryptoAlert alert = alertsList.get(chatId);
+            if (userState.get(chatId) == UserState.WAITING_FOR_CREATE_ALERT_PRICE) {
                 double price = Double.parseDouble(targetPrice);
+                if (price <= 0) {
+                    sendMessage(chatId, "⚠️ Price must be greater than zero. Please try again.",true);
+                    return;
+                }
+
+                CryptoAlert alert = alertsList.get(chatId);
                 alert.setTargetPrice(price);
                 alert.setTelegramUserId(chatId);
                 alert.setNotified(false);
-                cryptoService.createCryptoAlert(chatId, alert.getSymbol(), alert.getTargetPrice());
-                sendMessage(chatId, "✅ Alert created successfully for " + alert.getSymbol() + " at price: " + price);
+
+                cryptoService.createCryptoAlert(chatId, alert.getSymbol(), price);
+                sendMessage(chatId, "✅ Alert created for *" + alert.getSymbol() + "* at target price: *" + price + "*", true);
             }
+        } catch (NumberFormatException e) {
+            sendMessage(chatId, "❌ Invalid input. Please enter a valid number (e.g. 23450.75).",true);
+            log.warn("Invalid price input from {}: {}", chatId, targetPrice);
         } catch (Exception e) {
-            sendMessage(chatId, "⚠️ Invalid price. Please enter a valid number.");
+            sendMessage(chatId, "❌ Something went wrong while creating the alert. Please try again.",true);
+            log.error("Error creating alert for {}: {}", chatId, e.getMessage(), e);
+        } finally {
+            userState.remove(chatId);
+            alertsList.remove(chatId);
         }
-        this.userState.remove(chatId);
-        alertsList.remove(chatId);
     }
 
     private void processDeleteAlert(long chatId, String symbol) {
         try {
-            if (this.userState.get(chatId).equals(UserState.WAITING_FOR_DELETE_ALERT_SYMBOL)) {
-                cryptoService.deleteMyAlert(chatId, symbol);
-                sendMessage(chatId, "🗑️ Alert for " + symbol.toUpperCase() + " deleted (if it existed).");
-            }
-        } catch (Exception e) {
-                sendMessage(chatId, "⚠️ Failed to delete alert for " + symbol + ": " + e.getMessage());
-                log.error("Error deleting alert", e);
-            } finally {
-                this.userState.remove(chatId);
-            }
-    }
+            if (userState.get(chatId) == UserState.WAITING_FOR_DELETE_ALERT_SYMBOL) {
+                boolean deleted = cryptoService.deleteMyAlert(chatId, symbol);
 
-    private void processFromCurrency(long chatId, String fromCurrency) {
-        try {
-            if (currencySessionMap.containsKey(chatId) && this.userState.get(chatId).equals(UserState.WAITING_FOR_FROM_CURRENCY)) {
-                currencySessionMap.put(chatId, fromCurrency);
-                sendMessage(chatId, "You selected " + fromCurrency + ". Now, please provide the 'to' currency symbol (e.g., EUR).");
+                if (deleted) {
+                    sendMessage(chatId, "🗑️ Alert for *" + symbol.toUpperCase() + "* has been successfully deleted.", true);
+                } else {
+                    sendMessage(chatId, "⚠️ No alert found for *" + symbol.toUpperCase() + "*.", true);
+                }
             }
         } catch (Exception e) {
-            sendMessage(chatId,"Error retrieving data : " + e.getMessage());
+            sendMessage(chatId, "❌ Failed to delete alert for *" + symbol.toUpperCase() + "*.\nPlease try again later.", true);
+            log.error("Error deleting alert for user {} and symbol {}: {}", chatId, symbol, e.getMessage(), e);
+        } finally {
+            userState.remove(chatId);
         }
     }
 
+
+    private void processFromCurrency(long chatId, String fromCurrency) {
+        try {
+            if (currencySessionMap.containsKey(chatId) &&
+                    UserState.WAITING_FOR_FROM_CURRENCY.equals(userState.get(chatId))) {
+
+                fromCurrency = fromCurrency.trim().toUpperCase(); // Normalize input
+                currencySessionMap.put(chatId, fromCurrency);
+
+                sendMessage(chatId, "✅ You selected *" + fromCurrency + "* as the source currency.\n" +
+                        "Now, please provide the _target_ currency symbol (e.g., `EUR`).", true);
+            } else {
+                sendMessage(chatId, "⚠️ Unexpected input. Please start a new currency exchange session.",true);
+            }
+        } catch (Exception e) {
+            sendMessage(chatId, "❌ Error processing your input: " + e.getMessage(),true);
+            log.error("Failed to process 'fromCurrency' for user {}: {}", chatId, e.getMessage(), e);
+        }
+    }
+
+
     private void processToCurrency(long chatId, String toCurrency) {
-        if (this.userState.get(chatId).equals(UserState.WAITING_FOR_TO_CURRENCY)) {
+        if (UserState.WAITING_FOR_TO_CURRENCY.equals(this.userState.get(chatId))) {
             try {
                 String fromCurrency = currencySessionMap.get(chatId);
 
-                if (fromCurrency != null) {
+                if (fromCurrency != null && !fromCurrency.isBlank()) {
+                    toCurrency = toCurrency.trim().toUpperCase();
                     ExchangeRateData exchangeData = forexService.retrieveCurrencyExchangeRate(fromCurrency, toCurrency);
-                    sendMessage(chatId, exchangeData.toString());
+                    sendMessage(chatId, exchangeData.toString(),false);
+                } else {
+                    sendMessage(chatId, "⚠️ Could not find the source currency. Please restart the exchange process.",true);
+                    log.warn("From currency is missing for user {}", chatId);
                 }
+
             } catch (Exception e) {
-                sendMessage(chatId, "Not working properly : " + e.getMessage());
+                sendMessage(chatId, "❌ Error fetching exchange rate: " + e.getMessage(),true);
+                log.error("Exchange rate retrieval failed for user {}: {}", chatId, e.getMessage(), e);
             } finally {
                 currencySessionMap.remove(chatId);
                 this.userState.remove(chatId);
@@ -366,30 +408,34 @@ public class TelegramBot extends TelegramLongPollingBot {
         }
     }
 
-    private void sendMessage(Long chatId, String textToSend) {
-        SendMessage sendMessage = new SendMessage();
-        sendMessage.setText(textToSend);
-        sendMessage.setChatId(chatId);
+
+    private void sendMessage(long chatId, String text, boolean markdown) {
+        SendMessage message = new SendMessage();
+        message.setChatId(String.valueOf(chatId));
+        message.setText(text);
+        if (markdown) message.setParseMode("Markdown");
         try {
-            execute(sendMessage);
+            execute(message);
         } catch (TelegramApiException e) {
-            System.out.println(e.getMessage());
+            log.error("Failed to send message", e);
         }
     }
 
     private void sendDocument(Long chatId, InputFile fileToSend) {
         SendDocument sendDocument = new SendDocument();
-        sendDocument.setDocument(fileToSend);
         sendDocument.setChatId(chatId);
+        sendDocument.setDocument(fileToSend);
+
         try {
             execute(sendDocument);
         } catch (TelegramApiException e) {
-            System.out.println(e.getMessage());
+            log.error("Error sending document to chatId {}: {}", chatId, e.getMessage());
         }
     }
 
+
     public void sendMessageAlert(Long chatId, String textToSend) {
-        sendMessage(chatId,textToSend);
+        sendMessage(chatId,textToSend,true);
     }
 
     private enum UserState {

@@ -4,6 +4,7 @@ import com.Danthedev.Tradebot.dto.StockData;
 import com.Danthedev.Tradebot.dto.StockMatch;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.net.URI;
@@ -16,7 +17,8 @@ import java.util.List;
 @Service
 public class StockService {
 
-    private String apiKey = "H1X0GTYXQ9O9064A";
+    @Value("${AlphaVantage.API.token}")
+    private String apiKey;
 
     public StockData retrieveStockInfo(String symbol) throws IOException, InterruptedException {
         HttpRequest request = HttpRequest
@@ -79,6 +81,4 @@ public class StockService {
         }
         return stockList;
     }
-
-
 }

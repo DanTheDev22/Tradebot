@@ -5,12 +5,14 @@ public class TradebotCommands {
     public static class MarketCommands {
         public static final String STATUS_MARKET = "/status";
         public static final String EXCHANGE_RATE = "/exchange";
+        public static final String GET_SUPPORTED_PHYSICAL_CURRENCY = "/suppcurrency";
     }
 
     public static class CryptoCommands {
         public static final String GET_FULL_CRYPTO = "/getfullcrypto";
         public static final String GET_SIMPLE_CRYPTO = "/getsimplecrypto";
         public static final String FIND_CRYPTO = "/findcrypto";
+        public static final String GET_SUPPORTED_DIGITAL_CURRENCY = "/suppcrypto";
     }
 
     public static class StockCommands {
