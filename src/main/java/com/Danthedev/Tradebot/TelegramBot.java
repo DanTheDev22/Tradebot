@@ -14,7 +14,9 @@ import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.meta.api.methods.send.SendDocument;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
@@ -118,6 +120,8 @@ public class TelegramBot extends TelegramLongPollingBot {
         switch (messageText) {
             case START_COMMAND -> startCommandReceived(chatId, username);
             case STATUS_MARKET -> handleStatusCommand(chatId);
+            case GET_SUPPORTED_DIGITAL_CURRENCY -> handleGetSupportedDigitalCurrency(chatId);
+            case GET_SUPPORTED_PHYSICAL_CURRENCY -> handleGetSupportedPhysicalCurrency(chatId);
             case GET_FULL_CRYPTO -> handleGetFullCryptoResponseCommand(chatId);
             case GET_SIMPLE_CRYPTO -> handleGetSimpleCryptoResponseCommand(chatId);
             case FIND_CRYPTO -> handleSearchBySymbolOrByNameCryptoCommand(chatId);
@@ -140,6 +144,8 @@ public class TelegramBot extends TelegramLongPollingBot {
         String message = "Hi " + username + "! I am TradeBot and I will be your financial assistant! \n" +
                 "\n Use the following commands: \n" +
                 "/status - shows the US market status \n" +
+                "/suppcrypto - returns a list with all CryptoCurrencies supported for Exchange \n" +
+                "/suppcurrency - returns a list with all Physical Currencies supported for Exchange \n" +
                 "/getsimplecrypto - shows the price of a cryptocurrency \n" +
                 "/getfullcrypto - shows  full details about a cryptocurrency \n" +
                 "/findcrypto - returns the best-matching symbols and market information for cryptocurrency \n" +
@@ -206,11 +212,20 @@ public class TelegramBot extends TelegramLongPollingBot {
         userState.put(chatId, UserState.WAITING_FOR_FROM_CURRENCY);
         currencySessionMap.put(chatId, null);
 
-        String message = "Please provide the symbol for the currency/digital currency "
-                + "you want to exchange from (e.g., USD, EUR, BTC, ETH).\n"
-                + "Supported digital currencies are: BTC, ETH, XRP, DOGE, SOL.";
+        String message = """
+                Please provide the symbol for the currency/digital currency \
+                you want to exchange from (e.g., USD, EUR, BTC, ETH).
+                Check supported Digital Currencies - /suppcrypto\s
+                Check supported Physical Currencies - /suppcurrency\s
+                """;
 
         sendMessage(chatId, message);
+    }
+
+    private void handleGetSupportedDigitalCurrency(long chatId) {
+    }
+
+    private void handleGetSupportedPhysicalCurrency(long chatId) {
     }
 
     private void processCryptoSymbol(long chatId, String symbol) {
@@ -349,6 +364,17 @@ public class TelegramBot extends TelegramLongPollingBot {
         sendMessage.setChatId(chatId);
         try {
             execute(sendMessage);
+        } catch (TelegramApiException e) {
+            System.out.println(e.getMessage());
+        }
+    }
+
+    private void sendDocument(Long chatId, InputFile fileToSend) {
+        SendDocument sendDocument = new SendDocument();
+        sendDocument.setDocument(fileToSend);
+        sendDocument.setChatId(chatId);
+        try {
+            execute(sendDocument);
         } catch (TelegramApiException e) {
             System.out.println(e.getMessage());
         }

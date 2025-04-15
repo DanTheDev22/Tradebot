@@ -4,6 +4,8 @@ public class Commands {
 
     static final String START_COMMAND = "/start";
     static final String STATUS_MARKET = "/status";
+    static final String GET_SUPPORTED_DIGITAL_CURRENCY = "/suppcrypto";
+    static final String GET_SUPPORTED_PHYSICAL_CURRENCY = "/suppcurrency";
     static final String GET_FULL_CRYPTO = "/getfullcrypto";
     static final String GET_SIMPLE_CRYPTO = "/getsimplecrypto";
     static final String FIND_CRYPTO = "/findcrypto";
