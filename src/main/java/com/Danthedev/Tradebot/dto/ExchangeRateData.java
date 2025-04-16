@@ -19,20 +19,19 @@ public class ExchangeRateData {
 
    @Override
    public String toString() {
-      double bid = Double.parseDouble(bidPrice);
-      double ask = Double.parseDouble(askPrice);
-      double spread = ask - bid;
-
       return String.format("""
-                      %s (%s) → %s (%s)
-                      Exchange Rate: %s
-                      Bid: %.8f | Ask: %.8f | Spread: %.8f
-                      Last Refreshed: %s
-                      Time Zone: %s
+
+                      From Currency   : %s (%s)
+                      To Currency     : %s (%s)
+                      Exchange Rate   : %s
+                      Last Refreshed  : %s
+                      Time Zone       : %s
+                      Bid Price       : %s
+                      Ask Price       : %s
                       """,
               fromCurrencyName, fromCurrencyCode,
               toCurrencyName, toCurrencyCode,
-              exchangeRate, bid, ask, spread,
-              lastRefreshed, timeZone);
+              exchangeRate, lastRefreshed,
+              timeZone, bidPrice, askPrice);
    }
 }

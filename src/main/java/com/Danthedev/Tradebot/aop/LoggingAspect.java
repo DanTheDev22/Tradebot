@@ -47,7 +47,7 @@ public class LoggingAspect {
                     e.getMessage(),
                     e);
 
-            throw e;
+            throw e; // Let it propagate
         }
     }
 

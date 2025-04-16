@@ -53,6 +53,7 @@ public class CryptoService {
         return getCryptoInfo(response);
     }
 
+
     public JSONObject retrieveCryptoPrice(String symbol) throws IOException, InterruptedException {
         symbol = formatSymbol(symbol);
         HttpRequest request = HttpRequest.newBuilder()
@@ -132,16 +133,23 @@ public class CryptoService {
         }
     }
 
+
     public JSONObject searchBySymbolOrByName(String symbol) throws IOException, InterruptedException {
         HttpRequest request = HttpRequest
-                .newBuilder(URI.create("https://data-api.coindesk.com/asset/v1/search?limit=1&search_string=" + symbol.toUpperCase()))
+                .newBuilder(URI.create("https://data-api.coindesk.com/asset/v1/search?limit=1&search_string=" + symbol))
                 .method("GET", HttpRequest.BodyPublishers.noBody())
                 .build();
 
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
         if (response.statusCode() == 200) {
-            return new JSONObject(response.body());
+            JSONObject result = new JSONObject(response.body());
+
+            if (result.isEmpty() || !result.has("data") || result.getJSONArray("data").isEmpty()) {
+                throw new IOException("🔍 No results found for: '" + symbol + "'. Try a different symbol or name.");
+            }
+
+            return result;
         } else {
             log.warn("Search failed for '{}'. Status code: {}", symbol, response.statusCode());
             throw new IOException("❌ Could not search for symbol. Please try again later.");
