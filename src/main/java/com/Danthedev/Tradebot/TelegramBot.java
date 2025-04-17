@@ -69,65 +69,63 @@ public class TelegramBot extends TelegramLongPollingBot {
     @Override
     public void onUpdateReceived(Update update) {
         if (update.hasMessage() && update.getMessage().hasText()) {
-            String username = update.getMessage().getFrom().getFirstName();
-            long chatId = update.getMessage().getChatId();
-            String messageText = update.getMessage().getText();
-
-            handleNewUser(chatId, username);
-
-            if (messageText.startsWith("/")) {
-                try {
-                    handleCommand(messageText, chatId, username);
-                } catch (Exception e) {
-                    sendMessage(chatId, "❌ Something went wrong while executing that command. Please try again.",true);
-                    log.warn("Command '{}' from user '{}' failed: {}", messageText, username, e.getMessage());
-                }
-                return;
-            }
-
-            UserState currentState = userState.get(chatId);
-            if (currentState == null) {
-                sendMessage(chatId, "🤖 I'm not sure what you're trying to do. Use /start to see available commands.",true);
-                log.info("User '{}' sent unrecognized message: '{}'", username, messageText);
-                return;
-            }
-
-
-            try {
-                    switch (userState.get(chatId)) {
-                        case WAITING_FOR_CRYPTO_SYMBOL_FULL_RESPONSE, WAITING_FOR_CRYPTO_SYMBOL_SIMPLE_RESPONSE,
-                             WAITING_FOR_CRYPTO_SEARCH_SYMBOL ->
-                                processCryptoSymbol(chatId, messageText);
-                        case WAITING_FOR_STOCK_SYMBOL, WAITING_FOR_STOCK_SEARCH_SYMBOL ->
-                                processStockSymbol(chatId, messageText);
-                        case WAITING_FOR_FROM_CURRENCY -> {
-                            processFromCurrency(chatId, messageText);
-                            userState.put(chatId,UserState.WAITING_FOR_TO_CURRENCY);
-                        }
-                        case WAITING_FOR_TO_CURRENCY ->
-                                processToCurrency(chatId,messageText);
-                        case WAITING_FOR_CREATE_ALERT_SYMBOL -> {
-                            processCryptoSymbol(chatId, messageText);
-                            CryptoAlert newAlert = new CryptoAlert();
-                            newAlert.setSymbol(messageText.toUpperCase());
-                            alertsList.put(chatId, newAlert);
-                            userState.put(chatId, UserState.WAITING_FOR_CREATE_ALERT_PRICE);
-                        }
-                        case WAITING_FOR_CREATE_ALERT_PRICE ->
-                                processTargetPrice(chatId, messageText);
-                        case WAITING_FOR_DELETE_ALERT_SYMBOL ->
-                                processDeleteAlert(chatId,messageText);
-                        default -> {
-                            handleCommand(messageText, chatId, username);
-                        log.warn("Unhandled state: {}", currentState);
-                        }
-                    }
-                } catch (Exception e) {
-                sendMessage(chatId, "⚠️ Oops! Something went wrong while processing your input.",true);
-                log.error("Error processing input in state '{}': {}", currentState, e.getMessage(), e);
-            }
-            }
+            routeUserMessage(update);
         }
+    }
+
+    private void routeUserMessage(Update update) {
+        String username = update.getMessage().getFrom().getFirstName();
+        long chatId = update.getMessage().getChatId();
+        String messageText = update.getMessage().getText();
+
+        handleNewUser(chatId, username);
+
+        if (messageText.startsWith("/")) {
+            try {
+                handleCommand(messageText, chatId, username);
+            } catch (Exception e) {
+                sendMessage(chatId, "❌ Something went wrong while executing that command. Please try again.", true);
+                log.warn("Command '{}' from user '{}' failed: {}", messageText, username, e.getMessage());
+            }
+            return;
+        }
+
+        UserState currentState = userState.get(chatId);
+        if (currentState == null) {
+            sendMessage(chatId, "🤖 I'm not sure what you're trying to do. Use /start to see available commands.", true);
+            log.info("User '{}' sent unrecognized message: '{}'", username, messageText);
+            return;
+        }
+
+        try {
+            switch (currentState) {
+                case WAITING_FOR_CRYPTO_SYMBOL_FULL_RESPONSE, WAITING_FOR_CRYPTO_SYMBOL_SIMPLE_RESPONSE,
+                     WAITING_FOR_CRYPTO_SEARCH_SYMBOL -> processCryptoSymbol(chatId, messageText);
+                case WAITING_FOR_STOCK_SYMBOL, WAITING_FOR_STOCK_SEARCH_SYMBOL -> processStockSymbol(chatId, messageText);
+                case WAITING_FOR_FROM_CURRENCY -> {
+                    processFromCurrency(chatId, messageText);
+                    userState.put(chatId, UserState.WAITING_FOR_TO_CURRENCY);
+                }
+                case WAITING_FOR_TO_CURRENCY -> processToCurrency(chatId, messageText);
+                case WAITING_FOR_CREATE_ALERT_SYMBOL -> {
+                    processCryptoSymbol(chatId, messageText);
+                    CryptoAlert newAlert = new CryptoAlert();
+                    newAlert.setSymbol(messageText.toUpperCase());
+                    alertsList.put(chatId, newAlert);
+                    userState.put(chatId, UserState.WAITING_FOR_CREATE_ALERT_PRICE);
+                }
+                case WAITING_FOR_CREATE_ALERT_PRICE -> processTargetPrice(chatId, messageText);
+                case WAITING_FOR_DELETE_ALERT_SYMBOL -> processDeleteAlert(chatId, messageText);
+                default -> {
+                    handleCommand(messageText, chatId, username);
+                    log.warn("Unhandled state: {}", currentState);
+                }
+            }
+        } catch (Exception e) {
+            sendMessage(chatId, "⚠️ Oops! Something went wrong while processing your input.", true);
+            log.error("Error processing input in state '{}': {}", currentState, e.getMessage(), e);
+        }
+    }
 
     private void handleNewUser(long chatId, String username) {
         if (chatId == 0) return;

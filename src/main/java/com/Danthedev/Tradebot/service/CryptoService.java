@@ -133,7 +133,6 @@ public class CryptoService {
         }
     }
 
-
     public JSONObject searchBySymbolOrByName(String symbol) throws IOException, InterruptedException {
         HttpRequest request = HttpRequest
                 .newBuilder(URI.create("https://data-api.coindesk.com/asset/v1/search?limit=1&search_string=" + symbol))
