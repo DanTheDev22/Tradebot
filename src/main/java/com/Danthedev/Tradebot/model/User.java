@@ -14,8 +14,8 @@ public class User {
     @Column(name = "user_id",unique = true,nullable = false)
     private final Long userId;
 
-    @Column(name="userName",nullable = false)
-    private final String userName;
+    @Column(name="user_name",nullable = false)
+    private final String user_name;
 
     @Column(nullable = false)
     private final LocalDateTime registered_at;

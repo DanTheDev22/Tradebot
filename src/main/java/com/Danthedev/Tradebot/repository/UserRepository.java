@@ -16,10 +16,10 @@ public interface UserRepository extends JpaRepository<User,Integer> {
 
     @Modifying
     @Transactional
-    @Query(value = "INSERT INTO users (user_id,userName,registered_at)" +
-            "VALUES (:user_id,:userName,:registered_at)" +
+    @Query(value = "INSERT INTO users (user_id,user_name,registered_at)" +
+            "VALUES (:user_id,:user_name,:registered_at)" +
             "ON CONFLICT (user_id) DO NOTHING", nativeQuery = true)
     void insertIfNotExists(@Param("user_id") Long userId,
-                           @Param("userName") String userName,
+                           @Param("user_name") String user_name,
                            @Param("registered_at")LocalDateTime registered_at);
 }
