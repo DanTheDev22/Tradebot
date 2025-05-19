@@ -108,7 +108,10 @@ To interact with TradeBot, simply start a chat with the bot in Telegram and use 
 
 ## 📸 Screenshots / GIFs
 ---
-Below are some screenshots and a short demo GIF of TradeBot in action (coming soon 👇).
+Below are some screenshots and a short demo GIF of TradeBot in action.
+
+![tradebot](https://github.com/user-attachments/assets/314d5a4e-f01b-4cd4-9ad0-017af2fd5f60)
+
 
 ### 🧵 Command Flow Examples
 - `/start` command to display available commands.
