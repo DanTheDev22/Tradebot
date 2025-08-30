@@ -7,10 +7,7 @@ import com.Danthedev.Tradebot.dto.StockData;
 import com.Danthedev.Tradebot.dto.StockMatch;
 import com.Danthedev.Tradebot.model.*;
 import com.Danthedev.Tradebot.repository.UserRepository;
-import com.Danthedev.Tradebot.service.CryptoService;
-import com.Danthedev.Tradebot.service.ForexService;
-import com.Danthedev.Tradebot.service.MarketStatusService;
-import com.Danthedev.Tradebot.service.StockService;
+import com.Danthedev.Tradebot.service.*;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -23,12 +20,14 @@ import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
+import javax.swing.text.html.Option;
 import java.io.File;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static com.Danthedev.Tradebot.TradebotCommands.*;
 import static com.Danthedev.Tradebot.TradebotCommands.AlertCommands.*;
@@ -49,6 +48,7 @@ public class TelegramBot extends TelegramLongPollingBot {
     private final CryptoService cryptoService;
     private final StockService stockService;
     private final ForexService forexService;
+    private final CryptoPayClient cryptoPayClient;
 
     private final Map<Long, UserState> userState = new HashMap<>();
     private final Map<Long, CryptoAlert> alertsList = new HashMap<>();
@@ -56,7 +56,7 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     @Autowired
     public TelegramBot(BotConfig botConfig, UserRepository userRepository, MarketStatusService marketStatusService,
-                       CryptoService cryptoService, StockService stockService, ForexService forexService) {
+                       CryptoService cryptoService, StockService stockService, ForexService forexService, CryptoPayClient cryptoPayClient) {
         super(botConfig.getToken());
         this.botConfig = botConfig;
         this.userRepository = userRepository;
@@ -64,24 +64,46 @@ public class TelegramBot extends TelegramLongPollingBot {
         this.cryptoService = cryptoService;
         this.stockService = stockService;
         this.forexService=forexService;
+        this.cryptoPayClient = cryptoPayClient;
     }
 
     @Override
     public void onUpdateReceived(Update update) {
         if (update.hasMessage() && update.getMessage().hasText()) {
-            routeUserMessage(update);
+            try {
+                routeUserMessage(update);
+            } catch (IOException | InterruptedException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 
-    private void routeUserMessage(Update update) {
+    private boolean checkForAccess(Long chatId) {
+        User user = userRepository.findByUserId(chatId);
+        return user.getHasAccess();
+     }
+
+    private void routeUserMessage(Update update) throws IOException, InterruptedException {
         String username = update.getMessage().getFrom().getFirstName();
         long chatId = update.getMessage().getChatId();
         String messageText = update.getMessage().getText();
 
         handleNewUser(chatId, username);
 
-        if (messageText.startsWith("/")) {
+        if (!checkForAccess(chatId)) {
+            sendMessage(chatId,NO_ACCESS,true);
+           try {
+               String invoiceLink = cryptoPayClient.createInvoice("TON", 5, "Test payment for bot");
+
+               sendMessage(chatId, "Pay here: " + invoiceLink,false);
+           } catch (Exception e) {
+               log.error("Something went wrong. Please try again later.");
+           }
+        }
+
+        if (messageText.startsWith("/") && checkForAccess(chatId)) {
             try {
+
                 handleCommand(messageText, chatId, username);
             } catch (Exception e) {
                 sendMessage(chatId, "❌ Something went wrong while executing that command. Please try again.", true);
@@ -430,7 +452,6 @@ public class TelegramBot extends TelegramLongPollingBot {
             log.error("Error sending document to chatId {}: {}", chatId, e.getMessage());
         }
     }
-
 
     public void sendMessageAlert(Long chatId, String textToSend) {
         sendMessage(chatId,textToSend,true);

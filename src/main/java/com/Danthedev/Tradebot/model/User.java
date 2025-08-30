@@ -12,11 +12,14 @@ public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "native")
     @Column(name = "user_id",unique = true,nullable = false)
-    private final Long userId;
+    private Long userId;
 
     @Column(name="user_name",nullable = false)
-    private final String user_name;
+    private String user_name;
 
     @Column(nullable = false)
-    private final LocalDateTime registered_at;
+    private Boolean hasAccess = false;
+
+    @Column(nullable = false)
+    private LocalDateTime registered_at;
 }
