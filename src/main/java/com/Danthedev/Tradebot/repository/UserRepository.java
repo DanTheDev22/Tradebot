@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 
 @Repository
@@ -22,4 +23,7 @@ public interface UserRepository extends JpaRepository<User,Integer> {
     void insertIfNotExists(@Param("user_id") Long userId,
                            @Param("user_name") String user_name,
                            @Param("registered_at")LocalDateTime registered_at);
+
+    User findByUserId(Long userId);
+
 }

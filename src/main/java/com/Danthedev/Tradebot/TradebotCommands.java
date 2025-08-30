@@ -28,4 +28,5 @@ public class TradebotCommands {
 
     public static final String START_COMMAND = "/start";
     public static final String DEFAULT_MESSAGE = "Sorry, I didn't understand that. Try one of the available commands.";
+    public static final String NO_ACCESS = "To access this service, please pay the subscription fee.";
 }

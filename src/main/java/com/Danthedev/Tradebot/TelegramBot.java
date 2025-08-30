@@ -7,20 +7,24 @@ import com.Danthedev.Tradebot.dto.StockData;
 import com.Danthedev.Tradebot.dto.StockMatch;
 import com.Danthedev.Tradebot.model.*;
 import com.Danthedev.Tradebot.repository.UserRepository;
-import com.Danthedev.Tradebot.service.CryptoService;
-import com.Danthedev.Tradebot.service.ForexService;
-import com.Danthedev.Tradebot.service.MarketStatusService;
-import com.Danthedev.Tradebot.service.StockService;
+import com.Danthedev.Tradebot.service.*;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.meta.api.methods.AnswerPreCheckoutQuery;
 import org.telegram.telegrambots.meta.api.methods.send.SendDocument;
+import org.telegram.telegrambots.meta.api.methods.send.SendInvoice;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.payments.LabeledPrice;
+import org.telegram.telegrambots.meta.api.objects.payments.PreCheckoutQuery;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.io.File;
@@ -49,14 +53,18 @@ public class TelegramBot extends TelegramLongPollingBot {
     private final CryptoService cryptoService;
     private final StockService stockService;
     private final ForexService forexService;
+    private final CryptoPayClient cryptoPayClient;
 
     private final Map<Long, UserState> userState = new HashMap<>();
     private final Map<Long, CryptoAlert> alertsList = new HashMap<>();
     private final Map<Long, String> currencySessionMap = new HashMap<>();
 
+    @Value("${RunPay.API.token}")
+    private String RunPayToken;
+
     @Autowired
     public TelegramBot(BotConfig botConfig, UserRepository userRepository, MarketStatusService marketStatusService,
-                       CryptoService cryptoService, StockService stockService, ForexService forexService) {
+                       CryptoService cryptoService, StockService stockService, ForexService forexService, CryptoPayClient cryptoPayClient) {
         super(botConfig.getToken());
         this.botConfig = botConfig;
         this.userRepository = userRepository;
@@ -64,22 +72,156 @@ public class TelegramBot extends TelegramLongPollingBot {
         this.cryptoService = cryptoService;
         this.stockService = stockService;
         this.forexService=forexService;
+        this.cryptoPayClient = cryptoPayClient;
     }
 
     @Override
     public void onUpdateReceived(Update update) {
-        if (update.hasMessage() && update.getMessage().hasText()) {
-            routeUserMessage(update);
+
+        try {
+            if (update.hasPreCheckoutQuery()) {
+                handlePreCheckout(update.getPreCheckoutQuery());
+                return;
+            }
+
+            if (update.hasMessage() && update.getMessage().hasText()) {
+                routeUserMessage(update);
+            }
+
+            if (update.hasMessage() && update.getMessage().hasSuccessfulPayment()) {
+                handleSuccessfulPayment(update.getMessage().getSuccessfulPayment());
+            }
+
+        } catch (Exception e) {
+            log.error("Error handling update: {}", e.getMessage(), e);
         }
     }
 
-    private void routeUserMessage(Update update) {
+    private boolean checkForAccess(Long chatId) {
+        User user = userRepository.findByUserId(chatId);
+        return user.getHasAccess();
+     }
+
+    private void handlePreCheckout(PreCheckoutQuery preCheckoutQuery) {
+        try {
+
+            AnswerPreCheckoutQuery answer = AnswerPreCheckoutQuery.builder()
+                    .preCheckoutQueryId(preCheckoutQuery.getId())
+                    .ok(true)
+                    .errorMessage(null)
+                    .build();
+
+            execute(answer);
+            log.info("PreCheckoutQuery {} answered with ok={true}", preCheckoutQuery.getId());
+
+        } catch (TelegramApiException e) {
+            log.error("Failed to answer PreCheckoutQuery: {}", e.getMessage(), e);
+        }
+    }
+
+    private void handleSuccessfulPayment(org.telegram.telegrambots.meta.api.objects.payments.SuccessfulPayment payment) {
+        log.info("Payment received: {}", payment);
+
+        long userId = Long.parseLong(payment.getTelegramPaymentChargeId());
+        String payload = payment.getInvoicePayload(); // e.g. "purchase number 001"
+
+        // Example: grant premium access
+        User user = userRepository.findByUserId(userId);
+        if (user != null) {
+            user.setHasAccess(true);
+            userRepository.save(user);
+        }
+
+        sendMessage(userId, "✅ Payment successful! You now have premium access.", true);
+    }
+
+    private void routeUserMessage(Update update) throws IOException, InterruptedException {
         String username = update.getMessage().getFrom().getFirstName();
         long chatId = update.getMessage().getChatId();
         String messageText = update.getMessage().getText();
 
         handleNewUser(chatId, username);
 
+        if (!checkForAccess(chatId)) {
+            sendMessage(chatId,NO_ACCESS,true);
+           try {
+               CryptoPayClient.Invoice invoiceOne = new CryptoPayClient.Invoice(
+                       "crypto",
+                       "TON",
+                       null,
+                       2.0,
+                       "Test TON Payment",
+                       "Regular subscribtion ",
+                       3600
+               );
+               String invoiceLink1 = cryptoPayClient.createInvoice(invoiceOne);
+
+               CryptoPayClient.Invoice invoiceTwo = new CryptoPayClient.Invoice(
+                       "fiat",
+                       null,
+                       "USD",
+                       10.0,
+                       "Test USD Payment",
+                       "Regular subscribtion",
+                       3600
+               );
+               String invoiceLink2 = cryptoPayClient.createInvoice(invoiceTwo);
+
+
+               InlineKeyboardButton cryptoPay = new InlineKeyboardButton();
+               cryptoPay.setText("CryptoApi Pay");
+               cryptoPay.setUrl(invoiceLink1);
+
+               InlineKeyboardButton fiatPay = new InlineKeyboardButton();
+               fiatPay.setText("FiatApi Pay");
+               fiatPay.setUrl(invoiceLink2);
+
+
+
+               InlineKeyboardMarkup cryptoMarkup  = InlineKeyboardMarkup.builder()
+                       .keyboard(List.of(
+                               List.of(cryptoPay, fiatPay) //
+                       ))
+                       .build();
+
+               sendMessage(chatId, "Choose your CryptoPay method:",true, cryptoMarkup);
+
+               LabeledPrice price1 = new LabeledPrice("Subscription",6000);
+
+               InlineKeyboardButton runpayButton = new InlineKeyboardButton();
+               runpayButton.setText("RunPay Provider");
+               runpayButton.setPay(true);
+
+               InlineKeyboardMarkup runpayMarkup = InlineKeyboardMarkup.builder()
+                       .keyboard(List.of(List.of(runpayButton)))
+                       .build();
+
+               SendInvoice runpay = SendInvoice.builder()
+                       .chatId(chatId)
+                       .title("RunPay Provider")
+                       .description("One time purchase")
+                       .payload("purchase number 001")
+                       .providerToken(RunPayToken)
+                       .currency("MDL")
+                       .needEmail(true)
+                       .prices(List.of(price1))
+                       .needName(true)
+                       .needPhoneNumber(true)
+                       .needShippingAddress(false)
+                       .replyMarkup(runpayMarkup)
+                       .startParameter("premium123")
+                       .build();
+
+               sendMessage(chatId, "Or pay by your local provider:", true);
+                execute(runpay);
+
+           } catch (Exception e) {
+               log.error("Something went wrong. Please try again later.");
+           }
+           return;
+        }
+
+        UserState currentState = userState.get(chatId);
         if (messageText.startsWith("/")) {
             try {
                 handleCommand(messageText, chatId, username);
@@ -90,7 +232,6 @@ public class TelegramBot extends TelegramLongPollingBot {
             return;
         }
 
-        UserState currentState = userState.get(chatId);
         if (currentState == null) {
             sendMessage(chatId, "🤖 I'm not sure what you're trying to do. Use /start to see available commands.", true);
             log.info("User '{}' sent unrecognized message: '{}'", username, messageText);
@@ -419,6 +560,19 @@ public class TelegramBot extends TelegramLongPollingBot {
         }
     }
 
+    private void sendMessage(long chatId, String text, boolean markdown, InlineKeyboardMarkup markup) {
+        SendMessage message = new SendMessage();
+        message.setChatId(String.valueOf(chatId));
+        message.setText(text);
+        if (markdown) message.setParseMode("Markdown");
+        if (markup != null) message.setReplyMarkup(markup);
+        try {
+            execute(message);
+        } catch (TelegramApiException e) {
+            log.error("Failed to send message", e);
+        }
+    }
+
     private void sendDocument(Long chatId, InputFile fileToSend) {
         SendDocument sendDocument = new SendDocument();
         sendDocument.setChatId(chatId);
@@ -430,7 +584,6 @@ public class TelegramBot extends TelegramLongPollingBot {
             log.error("Error sending document to chatId {}: {}", chatId, e.getMessage());
         }
     }
-
 
     public void sendMessageAlert(Long chatId, String textToSend) {
         sendMessage(chatId,textToSend,true);
