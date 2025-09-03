@@ -1,6 +1,5 @@
 package com.Danthedev.Tradebot.service;
 
-import lombok.Data;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -27,7 +26,6 @@ public class CryptoPayClient {
         this.client = client;
     }
 
-
     public String createInvoice (Invoice invoice) throws IOException, InterruptedException {
         String body = invoice.toJson();
 
@@ -49,29 +47,24 @@ public class CryptoPayClient {
         return result.getString("pay_url");
     }
 
-    @Data
-    public static class Invoice {
-        private final String currencyType;
-        private final String asset;
-        private final String fiat;
-        private final double amount;
-        private final String description;
-        private final String payload;
-        private final int expiresIn;
 
-        public String toJson() {
-            String safeDescription = description.replace("\"", "\\\"");
-            String safePayload = payload != null ? payload.replace("\"", "\\\"") : "";
-            StringBuilder json = new StringBuilder("{");
-            json.append("\"currency_type\":\"").append(currencyType).append("\",");
-            if ("crypto".equals(currencyType)) json.append("\"asset\":\"").append(asset).append("\",");
-            if ("fiat".equals(currencyType)) json.append("\"fiat\":\"").append(fiat).append("\",");
-            json.append("\"amount\":").append(amount).append(",");
-            json.append("\"description\":\"").append(safeDescription).append("\",");
-            json.append("\"payload\":\"").append(safePayload).append("\",");
-            json.append("\"expires_in\":").append(expiresIn);
-            json.append("}");
-            return json.toString();
+        public record Invoice(String currencyType, String asset, String fiat, double amount, String description,
+                              String payload, int expiresIn) {
+
+
+            public String toJson() {
+                String safeDescription = description.replace("\"", "\\\"");
+                String safePayload = payload != null ? payload.replace("\"", "\\\"") : "";
+                StringBuilder json = new StringBuilder("{");
+                json.append("\"currency_type\":\"").append(currencyType).append("\",");
+                if ("crypto".equals(currencyType)) json.append("\"asset\":\"").append(asset).append("\",");
+                if ("fiat".equals(currencyType)) json.append("\"fiat\":\"").append(fiat).append("\",");
+                json.append("\"amount\":").append(amount).append(",");
+                json.append("\"description\":\"").append(safeDescription).append("\",");
+                json.append("\"payload\":\"").append(safePayload).append("\",");
+                json.append("\"expires_in\":").append(expiresIn);
+                json.append("}");
+                return json.toString();
+            }
         }
-    }
 }

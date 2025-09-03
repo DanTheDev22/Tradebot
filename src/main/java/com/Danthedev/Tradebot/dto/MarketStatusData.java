@@ -3,23 +3,9 @@ package com.Danthedev.Tradebot.dto;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Getter;
 
-@Getter
-public class MarketStatusData {
-
-    private final String exchange;
-    private final String holiday;
-
-    @JsonProperty(value = "isOpen")
-    private final boolean isOpen;
-
-    private final String session;
-
-    @JsonIgnore
-    private final long timestamp; //unix timestamp ignored (just for request purpose)
-
-    private final String timezone;
+public record MarketStatusData(String exchange, String holiday, @JsonProperty(value = "isOpen") boolean isOpen,
+                               String session, @JsonIgnore long timestamp, String timezone) {
 
     @JsonCreator
     public MarketStatusData(

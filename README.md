@@ -18,7 +18,7 @@
 ## 📽️ Demo
 
 Check out the demo of TradeBot in action:  
-👉 **[Demo Link – COMING SOON](#)**  
+👉 **[Demo Link – COMING SOON]**  
 <!-- Replace '#' with the actual link when available -->
 
 ---

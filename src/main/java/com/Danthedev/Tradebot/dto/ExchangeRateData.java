@@ -1,21 +1,9 @@
 package com.Danthedev.Tradebot.dto;
 
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
-@Getter
-@RequiredArgsConstructor
-public class ExchangeRateData {
-
-   private final String fromCurrencyCode;
-   private final String fromCurrencyName;
-   private final String toCurrencyCode;
-   private final String toCurrencyName;
-   private final String exchangeRate;
-   private final String lastRefreshed;
-   private final String timeZone;
-   private final String bidPrice;
-   private final String askPrice;
+public record ExchangeRateData(String fromCurrencyCode, String fromCurrencyName, String toCurrencyCode,
+                               String toCurrencyName, String exchangeRate, String lastRefreshed, String timeZone,
+                               String bidPrice, String askPrice) {
 
    @Override
    public String toString() {

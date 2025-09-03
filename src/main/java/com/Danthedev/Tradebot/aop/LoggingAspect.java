@@ -17,7 +17,7 @@ public class LoggingAspect {
 
     @Around("execution(* com.Danthedev.Tradebot.service..*(..)) || " +
             "execution(* com.Danthedev.Tradebot.repository..*(..)) || " +
-            "execution(* com.Danthedev.Tradebot.TelegramBot.*(..))")
+            "execution(* com.danthedev.tradebot.TelegramBot.*(..))")
     public Object loggingServiceMethods(ProceedingJoinPoint proceedingJoinPoint) throws Throwable {
         String methodName = proceedingJoinPoint.getSignature().getName();
         Object[] args = proceedingJoinPoint.getArgs();

@@ -1,5 +1,6 @@
 package com.Danthedev.Tradebot.service;
 
+import com.Danthedev.Tradebot.BotSenderImpl;
 import com.Danthedev.Tradebot.TelegramBot;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -8,9 +9,9 @@ import org.springframework.stereotype.Service;
 public class NotificationService {
 
     @Autowired
-    private TelegramBot telegramBot;
+    private BotSenderImpl bot;
 
     public void notifyUser(long chatId, String textMessage) {
-        telegramBot.sendMessageAlert(chatId,textMessage);
+        bot.sendMessageAlert(chatId,textMessage);
     }
 }
