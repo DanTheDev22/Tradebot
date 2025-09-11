@@ -15,7 +15,7 @@ import java.util.Arrays;
 @Component
 public class LoggingAspect {
 
-    @Around("execution(* com.Danthedev.Tradebot.service..*(..)) || " +
+    @Around("execution(* com.Danthedev.Tradebot.domain.service..*(..)) || " +
             "execution(* com.Danthedev.Tradebot.repository..*(..)) || " +
             "execution(* com.danthedev.tradebot.TelegramBot.*(..))")
     public Object loggingServiceMethods(ProceedingJoinPoint proceedingJoinPoint) throws Throwable {

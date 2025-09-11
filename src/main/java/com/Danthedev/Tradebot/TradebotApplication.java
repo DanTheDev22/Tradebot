@@ -1,5 +1,6 @@
 package com.Danthedev.Tradebot;
 
+import com.Danthedev.Tradebot.telegram.TelegramBot;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
