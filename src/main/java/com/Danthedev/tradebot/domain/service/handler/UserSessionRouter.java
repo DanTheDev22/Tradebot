@@ -30,8 +30,8 @@ public class UserSessionRouter {
         stateToHandler.put(UserState.WAITING_FOR_CRYPTO_SYMBOL_FULL_RESPONSE, cryptoHandler);
         stateToHandler.put(UserState.WAITING_FOR_CRYPTO_SYMBOL_SIMPLE_RESPONSE, cryptoHandler);
         stateToHandler.put(UserState.WAITING_FOR_CRYPTO_SEARCH_SYMBOL, cryptoHandler);
-        stateToHandler.put(UserState.WAITING_FOR_CREATE_ALERT_SYMBOL, cryptoHandler);
-        stateToHandler.put(UserState.WAITING_FOR_CREATE_ALERT_PRICE, cryptoHandler);
+        stateToHandler.put(UserState.WAITING_FOR_CREATE_ALERT_PHASE_1, cryptoHandler);
+        stateToHandler.put(UserState.WAITING_FOR_CREATE_ALERT_PHASE_2, cryptoHandler);
         stateToHandler.put(UserState.WAITING_FOR_DELETE_ALERT_SYMBOL, cryptoHandler);
 
         // Stock states

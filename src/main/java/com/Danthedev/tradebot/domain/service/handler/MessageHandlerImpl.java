@@ -1,6 +1,8 @@
 package com.Danthedev.tradebot.domain.service.handler;
 
+import com.Danthedev.tradebot.domain.model.CryptoAlert;
 import com.Danthedev.tradebot.domain.service.AccessManagerService;
+import com.Danthedev.tradebot.domain.service.UserStateService;
 import com.Danthedev.tradebot.telegram.BotSender;
 import com.Danthedev.tradebot.command.CommandHandlerImpl;
 import com.Danthedev.tradebot.domain.repository.user.UserRepository;
@@ -10,6 +12,7 @@ import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 
 @Slf4j
@@ -22,6 +25,7 @@ public class MessageHandlerImpl {
     private final UserRepository userRepository;
     private final AccessManagerService accessManager;
     private final UserSessionRouter sessionRouter;
+    private final UserStateService userStateService;
 
     public void routeUserMessage(Update update) {
         long chatId = update.getMessage().getChatId();
@@ -35,6 +39,7 @@ public class MessageHandlerImpl {
         }
 
         if (messageText.startsWith("/")) {
+            userStateService.clearSession(chatId);
             try {
                 commandHandler.handleCommand(messageText, chatId, username);
             } catch (Exception e) {
@@ -44,16 +49,33 @@ public class MessageHandlerImpl {
             return;
         }
 
-        boolean handled = sessionRouter.route(chatId, messageText);
-        if (!handled) {
-            bot.sendText(chatId, "🤖 I'm not sure what you're trying to do. Use /start to see available commands.", true);
-            log.info("Unhandled message: '{}' from user {}", messageText, chatId);
+        String currentState = userStateService.getState(chatId);
+        if (currentState != null) {
+            log.debug("Routing message '{}' from {} based on state {}", messageText, chatId, currentState);
+            boolean handled = sessionRouter.route(chatId, messageText);
+            if (!handled) {
+                bot.sendText(chatId, "⚠️ Something went wrong while processing your request.", true);
+                log.warn("State {} was not handled for user {}", currentState, chatId);
+            }
+            return;
         }
+
+        bot.sendText(chatId, "🤖 I'm not sure what you're trying to do. Use /start to see available commands.", true);
+        log.info("Unhandled message: '{}' from user {}", messageText, chatId);
     }
 
     private void handleNewUser(long chatId, String username) {
         if (chatId == 0) return;
         userRepository.insertIfNotExists(chatId, username, LocalDateTime.now());
+    }
+
+    public boolean deleteAlertById(Long chatId, Long alertId) {
+        Optional<CryptoAlert> alert = cryptoService.findAlertById(alertId);
+        if (alert.isPresent() && alert.get().getTelegramUserId().equals(chatId)) {
+            cryptoService.deleteAlert(alert.get());
+            return true;
+        }
+        return false;
     }
 }
 

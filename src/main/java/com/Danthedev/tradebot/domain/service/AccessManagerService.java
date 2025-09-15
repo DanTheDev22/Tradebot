@@ -41,7 +41,7 @@ public class AccessManagerService {
     }
 
     private void sendCryptoPayOptions(Long chatId) throws IOException, InterruptedException {
-        String invoiceLink1 = cryptoPayClient.createInvoice(new CryptoPayClient.Invoice("crypto",
+        String invoiceLink1 = cryptoPayClient.createInvoice(new CryptoPayClient.Invoice("cryptoAlert",
                 "TON",
                 null,
                 2.0,

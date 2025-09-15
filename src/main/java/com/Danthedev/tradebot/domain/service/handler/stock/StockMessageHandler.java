@@ -48,10 +48,10 @@ public class StockMessageHandler implements MessageHandler {
     public void handle(long chatId, String symbol) {
         UserState state = UserState.valueOf(userStateService.getState(chatId));
         try {
-            if (Objects.requireNonNull(state) == UserState.WAITING_FOR_STOCK_SYMBOL) {
+            if (Objects.requireNonNull(state) == UserState.WAITING_FOR_STOCK_SYMBOL || Objects.requireNonNull(state) == UserState.WAITING_FOR_STOCK_SEARCH_SYMBOL ) {
                 processStockSymbol(chatId, symbol);
             } else {
-                bot.sendText(chatId, "⚠️ Invalid state for crypto handler.", true);
+                bot.sendText(chatId, "⚠️ Invalid state for stock handler.", true);
             }
         } catch (Exception e) {
             bot.sendText(chatId, "❌ Something went wrong. Please try again later.", true);

@@ -4,7 +4,7 @@ import com.Danthedev.tradebot.telegram.BotSender;
 import com.Danthedev.tradebot.common.Status;
 import com.Danthedev.tradebot.domain.model.InvoiceRecord;
 import com.Danthedev.tradebot.domain.model.User;
-import com.Danthedev.tradebot.domain.repository.alert.InvoiceRecordRepository;
+import com.Danthedev.tradebot.domain.repository.invoice.InvoiceRecordRepository;
 import com.Danthedev.tradebot.domain.repository.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

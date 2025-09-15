@@ -24,6 +24,8 @@ public class CommandHandlerImpl implements CommandHandler{
         for (Command command : commands) {
             commandMap.put(command.getCommand(), command);
         }
+        System.out.println(commands);
+        System.out.println(commandMap);
         log.info("Registered {} bot commands", commandMap.size());
     }
 

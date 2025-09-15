@@ -69,7 +69,7 @@ public class ForexMessageHandler implements MessageHandler {
             switch (state) {
                 case WAITING_FOR_FROM_CURRENCY -> processFromCurrency(chatId,symbol);
                 case WAITING_FOR_TO_CURRENCY -> processToCurrency(chatId,symbol);
-                default -> bot.sendText(chatId, "⚠️ Invalid state for crypto handler.", true);
+                default -> bot.sendText(chatId, "⚠️ Invalid state for cryptoAlert handler.", true);
             }
         } catch (Exception e) {
             bot.sendText(chatId, "❌ Something went wrong. Please try again later.", true);

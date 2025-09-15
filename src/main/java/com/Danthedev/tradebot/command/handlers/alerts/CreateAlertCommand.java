@@ -22,7 +22,7 @@ public class CreateAlertCommand implements Command {
 
     @Override
     public void execute(long chatId, String username) {
-        userState.setState(chatId, UserState.WAITING_FOR_CREATE_ALERT_SYMBOL);
+        userState.setState(chatId, UserState.WAITING_FOR_CREATE_ALERT_PHASE_1);
         bot.sendText(chatId, "Please provide a symbol for cryptocurrency. Example TON-USDT",false);
     }
 }

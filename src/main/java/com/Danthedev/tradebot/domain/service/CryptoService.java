@@ -3,7 +3,7 @@ package com.Danthedev.tradebot.domain.service;
 import com.Danthedev.tradebot.domain.dto.CryptoDataResponse;
 import com.Danthedev.tradebot.domain.model.CryptoAlert;
 import com.Danthedev.tradebot.domain.dto.CryptoData;
-import com.Danthedev.tradebot.domain.repository.crypto.CryptoAlertRepository;
+import com.Danthedev.tradebot.domain.repository.cryptoAlert.CryptoAlertRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -12,12 +12,17 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -90,7 +95,9 @@ public class CryptoService {
         CryptoAlert alert = new CryptoAlert();
         alert.setTelegramUserId(telegramUserId);
         alert.setSymbol(symbol);
+        alert.setNotified(false);
         alert.setTargetPrice(targetPrice);
+        alert.setCreated_at(LocalDateTime.now());
         repository.save(alert);
     }
 
@@ -107,9 +114,9 @@ public class CryptoService {
             JSONObject object = retrieveCryptoPrice(alert.getSymbol());
             double currentPrice = Double.parseDouble(object.getString("price"));
 
-            if (currentPrice>= alert.getTargetPrice()) {
-                notificationService.sendAlert(alert.getTelegramUserId(),alert.getSymbol() + " has reached " +
-                        alert.getTargetPrice() + " ! Actual Price is " + currentPrice );
+            if (currentPrice >= alert.getTargetPrice()) {
+                notificationService.sendAlert(alert.getTelegramUserId(), alert.getSymbol() + " has reached " +
+                        alert.getTargetPrice() + " ! Actual Price is " + currentPrice);
                 alert.setNotified(true);
                 repository.delete(alert);
             }
@@ -120,38 +127,38 @@ public class CryptoService {
         return repository.findByTelegramUserId(telegramUserId);
     }
 
-    public boolean deleteMyAlert(Long telegramUserId, String symbol) {
-        Optional<CryptoAlert> foundAlert = repository.findByTelegramUserIdAndSymbol(telegramUserId, symbol.toUpperCase());
-
-        if (foundAlert.isPresent()) {
-            repository.delete(foundAlert.get());
-            log.info("✅ Alert for symbol '{}' deleted for user {}", symbol.toUpperCase(), telegramUserId);
-            return true;
-        } else {
-            log.warn("⚠️ No alert found for symbol '{}' for user {}", symbol.toUpperCase(), telegramUserId);
-            return false;
-        }
+    public List<CryptoAlert> getAlertsForSymbol(Long telegramUserId, String symbol) {
+        return repository.findAllByTelegramUserIdAndSymbol(telegramUserId, symbol.toUpperCase());
     }
 
     public JSONObject searchBySymbolOrByName(String symbol) throws IOException, InterruptedException {
         HttpRequest request = HttpRequest
                 .newBuilder(URI.create("https://data-api.coindesk.com/asset/v1/search?limit=1&search_string=" + symbol))
-                .method("GET", HttpRequest.BodyPublishers.noBody())
+                .GET()
                 .build();
 
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
-        if (response.statusCode() == 200) {
-            JSONObject result = new JSONObject(response.body());
-
-            if (result.isEmpty() || !result.has("data") || result.getJSONArray("data").isEmpty()) {
-                throw new IOException("🔍 No results found for: '" + symbol + "'. Try a different symbol or name.");
-            }
-
-            return result;
-        } else {
+        if (response.statusCode() != 200) {
             log.warn("Search failed for '{}'. Status code: {}", symbol, response.statusCode());
             throw new IOException("❌ Could not search for symbol. Please try again later.");
         }
+
+        JSONObject result = new JSONObject(response.body());
+
+        if (!result.has("Data")) {
+            throw new IOException("❌ Invalid response structure, 'Data' not found.");
+        }
+
+        return result;
     }
+
+    public Optional<CryptoAlert> findAlertById(Long alertId) {
+        return repository.findById(alertId);
+    }
+
+    public void deleteAlert(CryptoAlert alert) {
+        repository.delete(alert);
+    }
+
 }

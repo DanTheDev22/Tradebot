@@ -1,4 +1,4 @@
-package com.Danthedev.tradebot.domain.repository.alert;
+package com.Danthedev.tradebot.domain.repository.invoice;
 
 import com.Danthedev.tradebot.domain.model.InvoiceRecord;
 import org.springframework.data.jpa.repository.JpaRepository;

@@ -30,9 +30,9 @@ public class StartCommand implements Command {
                 "/getstock - shows  full details about an stock \n" +
                 "/findstock - returns the best-matching symbols and market information for stock \n" +
                 "/exchange - returns the realtime exchange rate for a pair of digital currency (e.g., Bitcoin) or physical currency (e.g., USD). \n" +
-                "/createalert - creates alert price and gives notification when is reached \n" +
+                "/createalert - creates invoice price and gives notification when is reached \n" +
                 "/showalerts - shows user's alerts \n" +
-                "/deletealert - delete user's alert \n";
+                "/deletealert - delete user's invoice \n";
         bot.sendText(chatId, message,false);
     }
 }

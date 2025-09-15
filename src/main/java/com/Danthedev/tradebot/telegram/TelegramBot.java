@@ -61,6 +61,23 @@ public class TelegramBot extends TelegramLongPollingBot {
         if ("CHECK_PAYMENT".equals(data)) {
             paymentHandler.checkPayment(chatId);
         }
+
+        if (data.startsWith("delete_alert:")) {
+            String idStr = data.split(":")[1];
+            try {
+                Long alertId = Long.parseLong(idStr);
+                boolean deleted = messageHandler.deleteAlertById(chatId, alertId);
+
+                if (deleted) {
+                    bot.sendText(chatId, "✅ Alert successfully deleted.", false);
+                } else {
+                    bot.sendText(chatId, "⚠️ Alert could not be deleted. It may have been already removed.", true);
+                }
+            } catch (NumberFormatException e) {
+                bot.sendText(chatId, "❌ Invalid alert ID.", true);
+            }
+            return;
+        }
     }
 
     private void handlePreCheckoutQuery(Update update) {
