@@ -25,5 +25,4 @@ public class TradebotApplication {
 		telegramBotsApi.registerBot(telegramBot);
 		return telegramBotsApi;
 	}
-
 }

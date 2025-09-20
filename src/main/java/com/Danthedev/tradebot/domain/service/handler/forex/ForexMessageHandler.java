@@ -10,6 +10,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -19,12 +22,15 @@ public class ForexMessageHandler implements MessageHandler {
     private final UserStateService userStateService;
     private final ForexService forexService;
 
+    private final Map<Long, String> fromCurrencyMap = new ConcurrentHashMap<>();
+
     private void processFromCurrency(long chatId, String fromCurrency) {
         try {
             if (UserState.WAITING_FOR_FROM_CURRENCY.equals(UserState.valueOf(userStateService.getState(chatId)))) {
 
                 fromCurrency = fromCurrency.trim().toUpperCase(); // Normalize input
                 userStateService.setState(chatId, UserState.WAITING_FOR_TO_CURRENCY);
+                fromCurrencyMap.put(chatId,fromCurrency);
 
                 bot.sendText(chatId, "✅ You selected *" + fromCurrency + "* as the source currency.\n" +
                         "Now, please provide the _target_ currency symbol (e.g., `EUR`).", true);
@@ -37,11 +43,10 @@ public class ForexMessageHandler implements MessageHandler {
         }
     }
 
-
     private void processToCurrency(long chatId, String toCurrency) {
         if (UserState.WAITING_FOR_TO_CURRENCY.equals(UserState.valueOf(userStateService.getState(chatId)))) {
             try {
-                String fromCurrency = (userStateService.getState(chatId));
+                String fromCurrency = fromCurrencyMap.get(chatId);
 
                 if (fromCurrency != null && !fromCurrency.isBlank()) {
                     toCurrency = toCurrency.trim().toUpperCase();
@@ -57,7 +62,6 @@ public class ForexMessageHandler implements MessageHandler {
                 log.error("Exchange rate retrieval failed for user {}: {}", chatId, e.getMessage(), e);
             } finally {
                 userStateService.clearSession(chatId);
-                this.userStateService.clearSession(chatId);
             }
         }
     }
@@ -74,8 +78,6 @@ public class ForexMessageHandler implements MessageHandler {
         } catch (Exception e) {
             bot.sendText(chatId, "❌ Something went wrong. Please try again later.", true);
             log.error("Error in ForexMessageHandler: {}", e.getMessage(), e);
-        } finally {
-            userStateService.clearSession(chatId);
         }
     }
 }

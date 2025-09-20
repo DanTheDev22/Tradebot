@@ -33,7 +33,6 @@ public class CryptoMessageHandler implements MessageHandler {
     private final NotificationService notifier;
     private final CryptoAlertRepository alertRepository;
 
-
     private final Map<Long, CryptoAlert> alertsList = new HashMap<>();
 
     @Override
@@ -161,5 +160,14 @@ public class CryptoMessageHandler implements MessageHandler {
             log.error("Error deleting alert for user {} and symbol {}: {}", chatId, symbol, e.getMessage(), e);
             userStateService.clearSession(chatId);
         }
+    }
+
+    public boolean deleteAlertById(Long chatId, Long alertId) {
+        Optional<CryptoAlert> alert = cryptoService.findAlertById(alertId);
+        if (alert.isPresent() && alert.get().getTelegramUserId().equals(chatId)) {
+            cryptoService.deleteAlert(alert.get());
+            return true;
+        }
+        return false;
     }
 }

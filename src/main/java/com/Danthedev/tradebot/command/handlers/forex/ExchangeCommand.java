@@ -25,8 +25,6 @@ public class ExchangeCommand implements Command {
     @Override
     public void execute(long chatId, String username) {
         userState.setState(chatId, UserState.WAITING_FOR_FROM_CURRENCY);
-        userState.setState(chatId, null);
-
         String message = """
                 Please provide the symbol for the currency/digital currency \
                 you want to exchange from (e.g., USD, EUR, BTC, ETH).

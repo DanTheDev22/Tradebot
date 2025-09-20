@@ -1,8 +1,8 @@
 package com.Danthedev.tradebot.domain.service.handler;
 
-import com.Danthedev.tradebot.domain.model.CryptoAlert;
 import com.Danthedev.tradebot.domain.service.AccessManagerService;
 import com.Danthedev.tradebot.domain.service.UserStateService;
+import com.Danthedev.tradebot.domain.service.handler.crypto.CryptoMessageHandler;
 import com.Danthedev.tradebot.telegram.BotSender;
 import com.Danthedev.tradebot.command.CommandHandlerImpl;
 import com.Danthedev.tradebot.domain.repository.user.UserRepository;
@@ -12,7 +12,6 @@ import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
 import java.time.LocalDateTime;
-import java.util.Optional;
 
 
 @Slf4j
@@ -26,6 +25,7 @@ public class MessageHandlerImpl {
     private final AccessManagerService accessManager;
     private final UserSessionRouter sessionRouter;
     private final UserStateService userStateService;
+    private final CryptoMessageHandler cryptoMessageHandler;
 
     public void routeUserMessage(Update update) {
         long chatId = update.getMessage().getChatId();
@@ -66,16 +66,19 @@ public class MessageHandlerImpl {
 
     private void handleNewUser(long chatId, String username) {
         if (chatId == 0) return;
-        userRepository.insertIfNotExists(chatId, username, LocalDateTime.now());
+        userRepository.insertIfNotExists(chatId, username, LocalDateTime.now(), false);
     }
 
-    public boolean deleteAlertById(Long chatId, Long alertId) {
-        Optional<CryptoAlert> alert = cryptoService.findAlertById(alertId);
-        if (alert.isPresent() && alert.get().getTelegramUserId().equals(chatId)) {
-            cryptoService.deleteAlert(alert.get());
-            return true;
+    public void checkIfDeleted(boolean isDeleted, long chatId) {
+        if (isDeleted) {
+            bot.sendText(chatId, "✅ Alert successfully deleted.", false);
+        } else {
+            bot.sendText(chatId, "⚠️ Alert could not be deleted. It may have been already removed.", true);
         }
-        return false;
+    }
+
+    public boolean deleteAlertByIdAbstract(Long chatId, Long alertId) {
+       return cryptoMessageHandler.deleteAlertById(chatId,alertId);
     }
 }
 

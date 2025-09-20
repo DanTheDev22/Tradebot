@@ -43,7 +43,6 @@ public class StockMessageHandler implements MessageHandler {
         }
     }
 
-
     @Override
     public void handle(long chatId, String symbol) {
         UserState state = UserState.valueOf(userStateService.getState(chatId));

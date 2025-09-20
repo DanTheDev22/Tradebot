@@ -25,6 +25,6 @@ public class FindCryptoCommand implements Command {
     @Override
     public void execute(long chatId, String username) {
         userState.setState(chatId, UserState.WAITING_FOR_CRYPTO_SEARCH_SYMBOL);
-        bot.sendText(chatId, "Please provide a symbol or a name for cryptoAlert",false);
+        bot.sendText(chatId, "Please enter a symbol or name of the cryptocurrency you want to track",false);
     }
 }

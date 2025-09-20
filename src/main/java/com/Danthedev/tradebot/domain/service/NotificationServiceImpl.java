@@ -12,7 +12,6 @@ public class NotificationServiceImpl implements NotificationService {
         this.bot = bot;
     }
 
-
     @Override
     public void sendAlert(Long chatId, String text) {
         bot.sendWarning(chatId, text);
@@ -21,10 +20,5 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     public void sendError(Long chatId, String text) {
         bot.sendError(chatId, text);
-    }
-
-    @Override
-    public void sendConfirmation(Long chatId, String text) {
-        bot.sendSuccess(chatId, text);
     }
 }

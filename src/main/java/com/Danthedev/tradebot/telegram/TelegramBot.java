@@ -4,6 +4,7 @@ import com.Danthedev.tradebot.config.BotConfig;
 import com.Danthedev.tradebot.domain.service.*;
 import com.Danthedev.tradebot.domain.service.handler.MessageHandlerImpl;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
@@ -21,12 +22,11 @@ public class TelegramBot extends TelegramLongPollingBot {
 
 
     @Autowired
-    public TelegramBot(BotConfig botConfig, @Lazy PaymentHandler paymentHandler, @Lazy MessageHandlerImpl messageHandler) {
+    public TelegramBot(BotConfig botConfig, @Lazy PaymentHandler paymentHandler, @Lazy MessageHandlerImpl messageHandler, ObjectProvider<TelegramBot> botProvider) {
         super(botConfig.getToken());
         this.botConfig = botConfig;
         this.paymentHandler = paymentHandler;
         this.messageHandler = messageHandler;
-
     }
 
     @Override
@@ -64,19 +64,10 @@ public class TelegramBot extends TelegramLongPollingBot {
 
         if (data.startsWith("delete_alert:")) {
             String idStr = data.split(":")[1];
-            try {
                 Long alertId = Long.parseLong(idStr);
-                boolean deleted = messageHandler.deleteAlertById(chatId, alertId);
+                boolean deleted = messageHandler.deleteAlertByIdAbstract(chatId, alertId);
 
-                if (deleted) {
-                    bot.sendText(chatId, "✅ Alert successfully deleted.", false);
-                } else {
-                    bot.sendText(chatId, "⚠️ Alert could not be deleted. It may have been already removed.", true);
-                }
-            } catch (NumberFormatException e) {
-                bot.sendText(chatId, "❌ Invalid alert ID.", true);
-            }
-            return;
+                messageHandler.checkIfDeleted(deleted,chatId);
         }
     }
 

@@ -20,9 +20,8 @@ public class UserStateService {
 
     public String getState(long chatId) {
         Object state = redisTemplate.opsForValue().get("user:" + chatId + ":state");
-        return state != null ? state.toString() : null;
+        return state.toString();
     }
-
 
     public void clearSession(long chatId) {
         redisTemplate.delete("user:" + chatId + ":state");

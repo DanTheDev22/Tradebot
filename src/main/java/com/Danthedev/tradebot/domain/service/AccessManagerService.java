@@ -41,20 +41,27 @@ public class AccessManagerService {
     }
 
     private void sendCryptoPayOptions(Long chatId) throws IOException, InterruptedException {
-        String invoiceLink1 = cryptoPayClient.createInvoice(new CryptoPayClient.Invoice("cryptoAlert",
-                "TON",
+        CryptoPayClient.Invoice invoiceCrypto = new CryptoPayClient.Invoice(
+                "crypto",
+                "USDT",
                 null,
                 2.0,
                 "TON Payment",
                 "Regular",
-                3600));
-        String invoiceLink2 = cryptoPayClient.createInvoice(new CryptoPayClient.Invoice("fiat",
+                3600
+        );
+        String invoiceLink1 = cryptoPayClient.createInvoice(invoiceCrypto);
+
+        CryptoPayClient.Invoice invoiceFiat = new CryptoPayClient.Invoice(
+                "fiat",
                 null,
                 "USD",
                 10.0,
                 "USD Payment",
                 "Regular",
-                3600));
+                3600
+        );
+        String invoiceLink2 = cryptoPayClient.createInvoice(invoiceFiat);
 
         InlineKeyboardMarkup markup = InlineKeyboardMarkup.builder()
                 .keyboard(List.of(List.of(
@@ -64,6 +71,7 @@ public class AccessManagerService {
                 .build();
 
         bot.sendText(chatId, "Choose your CryptoPay method:", true, markup);
+// For accepting payment from cryptoapi its needed a domain and pre-checkout query + webhooks enabled
     }
 
     private void sendRunPayInvoice(Long chatId) {

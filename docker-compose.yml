@@ -1,0 +1,50 @@
+version: "3.8"
+services:
+  redis-server:
+    image: redis:7.2
+    container_name: redis-server
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--requirepass", "redisPass123"]
+    volumes:
+      - redis_data:/data
+    restart: always
+    networks:
+      - tgbot_network
+
+
+  postgres_db:
+    image: postgres:15
+    container_name: postgres_db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: Admin
+      POSTGRES_PASSWORD: blkl%9YE
+      POSTGRES_DB: Tradebot
+    networks:
+      - tgbot_network
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  app:
+    build:
+      context: .
+      dockerfile: DockerFile
+    container_name: tradebot
+    ports:
+      - "8080:8080"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    depends_on:
+      - redis-server
+      - postgres_db
+    networks:
+      - tgbot_network
+
+networks:
+  tgbot_network:
+
+volumes:
+  redis_data:
+  db_data:

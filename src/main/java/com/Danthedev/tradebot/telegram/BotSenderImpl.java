@@ -29,10 +29,6 @@ public class BotSenderImpl implements BotSender {
     @Override
     public void sendText(long chatId, String text, boolean markdown) {
         TelegramBot bot = botProvider.getIfAvailable();
-        if (bot == null) {
-            log.error("Bot not initialized!");
-            return;
-        }
 
         SendMessage message = new SendMessage();
         message.setChatId(String.valueOf(chatId));
@@ -48,10 +44,6 @@ public class BotSenderImpl implements BotSender {
     @Override
     public void sendText(long chatId, String text, boolean markdown, InlineKeyboardMarkup markup) {
         TelegramBot bot = botProvider.getIfAvailable();
-        if (bot == null) {
-            log.error("Bot not initialized!");
-            return;
-        }
 
         SendMessage message = new SendMessage();
         message.setChatId(String.valueOf(chatId));
@@ -82,10 +74,6 @@ public class BotSenderImpl implements BotSender {
 
     public void sendDocument(Long chatId, String resourcePath) {
         TelegramBot bot = botProvider.getIfAvailable();
-        if (bot == null) {
-            log.error("Bot not initialized!");
-            return;
-        }
 
         try (InputStream is = getClass().getClassLoader().getResourceAsStream(resourcePath)) {
             if (is == null) {
@@ -107,10 +95,6 @@ public class BotSenderImpl implements BotSender {
     @Override
     public void sendInvoice(org.telegram.telegrambots.meta.api.methods.send.SendInvoice invoice) {
         TelegramBot bot = botProvider.getIfAvailable();
-        if (bot == null) {
-            log.error("Bot not initialized!");
-            return;
-        }
 
         try {
             bot.execute(invoice);
@@ -119,14 +103,9 @@ public class BotSenderImpl implements BotSender {
         }
     }
 
-
     @Override
     public void answerPreCheckoutQuery(AnswerPreCheckoutQuery answer) {
         TelegramBot bot = botProvider.getIfAvailable();
-        if (bot == null) {
-            log.error("Bot not initialized!");
-            return;
-        }
 
         try {
             bot.execute(answer);

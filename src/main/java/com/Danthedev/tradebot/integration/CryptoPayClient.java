@@ -47,7 +47,6 @@ public class CryptoPayClient {
         return result.getString("pay_url");
     }
 
-
         public record Invoice(String currencyType, String asset, String fiat, double amount, String description,
                               String payload, int expiresIn) {
 
@@ -57,7 +56,7 @@ public class CryptoPayClient {
                 String safePayload = payload != null ? payload.replace("\"", "\\\"") : "";
                 StringBuilder json = new StringBuilder("{");
                 json.append("\"currency_type\":\"").append(currencyType).append("\",");
-                if ("cryptoAlert".equals(currencyType)) json.append("\"asset\":\"").append(asset).append("\",");
+                if ("crypto".equals(currencyType)) json.append("\"asset\":\"").append(asset).append("\",");
                 if ("fiat".equals(currencyType)) json.append("\"fiat\":\"").append(fiat).append("\",");
                 json.append("\"amount\":").append(amount).append(",");
                 json.append("\"description\":\"").append(safeDescription).append("\",");
